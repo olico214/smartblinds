@@ -6,10 +6,12 @@ export async function POST(req, { params }) {
     const connection = await pool.getConnection(); // Obtener una conexión del pool
 
     try {
-        const { id: idCotizacion } = await params;
-        const { products, precioNormal, precioReal, iva, descuento, toleracion } = await req.json();
+        const { id } = await params;
+        const body = await req.json();
+        const { products, precioNormal, precioReal, iva, descuento, toleracion } = body;
+        console.log(body)
         // 1. Validar estatus antes de hacer cualquier cambio
-        const [cotizacion] = await connection.query("SELECT estatus FROM listado_ov WHERE id = ?", [idCotizacion]);
+        const [cotizacion] = await connection.query("SELECT estatus FROM listado_ov WHERE id = ?", [id]);
         const estatusActual = cotizacion[0]?.estatus;
 
         if (estatusActual === 'Autorizado' || estatusActual === 'Cancelado') {
@@ -20,7 +22,7 @@ export async function POST(req, { params }) {
         await connection.beginTransaction();
 
         // 3. Borrar todos los productos existentes para esta cotización
-        await connection.query("DELETE FROM products_ov WHERE idCotizacion = ?", [idCotizacion]);
+        await connection.query("DELETE FROM products_ov WHERE idCotizacion = ?", [id]);
 
         // 4. Si no hay productos nuevos para guardar, solo terminamos.
         if (!products || products.length === 0) {
@@ -38,7 +40,7 @@ export async function POST(req, { params }) {
 
         // 6. Mapear el arreglo de productos al formato de la consulta masiva (arreglo de arreglos)
         const values = products.map(p => [
-            idCotizacion,
+            id,
             p.idproducto,
             p.cantidad,
             p.costo_pieza,
@@ -65,11 +67,10 @@ export async function POST(req, { params }) {
         const precioconDescuento = precioNormal - (precioNormal * (descuento * 0.01));
 
         const updatequery = `UPDATE listado_ov SET  estatus = ?,iva=?,precioNormal=?,precioReal=?,precioNormalconDescuento =?,descuento=?,tolerancia=? WHERE id = ? `;
-        await pool.query(updatequery, ['Finalizado', iva, precioNormal, precioReal, precioconDescuento, descuento, toleracion, idCotizacion]);
+        await pool.query(updatequery, ['Finalizado', iva, precioNormal, precioReal, precioconDescuento, descuento, toleracion, id]);
 
 
 
-        // 8. Confirmar la transacción
         await connection.commit();
 
         return NextResponse.json({ message: "Productos guardados con éxito" });
