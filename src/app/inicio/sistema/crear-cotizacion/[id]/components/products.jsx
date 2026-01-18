@@ -183,10 +183,10 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
             producto_nombre: selectedProductInfo.nombre,
             producto_tipo: selectedProductInfo.tipo,
             description: selectedProductInfo.tipo === "Telas"
-                ? `Persianas Manuales de ${ubicacionFinal}, ${newProductForm.cantidad} pza ${parseFloat(newProductForm.ancho) + parseFloat(toleracion)}x${parseFloat(newProductForm.alto) + parseFloat(toleracion)}m, ${selectedProductInfo.type} ${selectedProductInfo.modeloSB}`
+                ? `Persianas Manuales de ${ubicacionFinal}, ${newProductForm.cantidad} pza ${(parseFloat(newProductForm.ancho) + parseFloat(toleracion)).toFixed(2)}x${(parseFloat(newProductForm.alto) + parseFloat(toleracion)).toFixed(2)}m, ${selectedProductInfo.type} ${selectedProductInfo.modeloSB}`
                 : selectedProductInfo.descripcion,
             newMedidas: selectedProductInfo.tipo === "Telas"
-                ? `${parseFloat(newProductForm.ancho) + parseFloat(toleracion)}x${parseFloat(newProductForm.alto) + parseFloat(toleracion)}m`
+                ? `${(parseFloat(newProductForm.ancho) + parseFloat(toleracion)).toFixed(2)}x${(parseFloat(newProductForm.alto) + parseFloat(toleracion)).toFixed(2)}m`
                 : selectedProductInfo.tamano,
             sku: selectedProductInfo.sku
         };
@@ -212,23 +212,14 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
     const handleSaveProducts = async () => {
 
         const result = await Swal.fire({
-
             title: '¿Guardar y Finalizar?',
-
             html: "Estás a punto de guardar los productos. <br>Una vez guardada, la lista quedará en modo de <b>solo lectura</b>.",
-
             icon: 'warning',
-
             showCancelButton: true,
-
             confirmButtonColor: '#28a745',
-
             cancelButtonColor: '#d33',
-
             confirmButtonText: 'Sí, guardar',
-
             cancelButtonText: 'Cancelar'
-
         });
 
 
