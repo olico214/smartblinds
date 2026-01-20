@@ -12,7 +12,7 @@ export default async function IdCotizacionViewPage({ params }) {
     if (!userid.value) {
         return redirect("/login");
     }
-
+    const urlinterna = process.env.URL_INTERNA
     // Hacemos la carga de datos del lado del servidor
     const res = await fetch(`${process.env.FRONTEND_URL}/api/cotizacion/${id}?user=${userid.value}`, { cache: 'no-store' });
     const data = await res.json();
@@ -30,7 +30,7 @@ export default async function IdCotizacionViewPage({ params }) {
             <CotizacionHeaderView cotizacion={data.cotizacion} isAdmin={data.isAdmin} />
             {/* <CotizacionProductsView productos={data.productos} cotizacion={data.cotizacion} /> */}
             <CotizacionProductsViewtest productos={data.productos} cotizacion={data.cotizacion} />
-            <DrawerOptionsComponent id={id} />
+            <DrawerOptionsComponent id={id} urlinterna={urlinterna} />
         </div>
     );
 }

@@ -27,7 +27,7 @@ const Icons = {
     clock: <FaClock className="text-yellow-600" />
 };
 
-export default function MacroWhatsapp() {
+export default function MacroWhatsapp({ urlinterna }) {
     const [view, setView] = useState("list"); // 'list' | 'editor'
     const [selectedSequence, setSelectedSequence] = useState(null);
     const [sequences, setSequences] = useState([]);
@@ -118,6 +118,7 @@ export default function MacroWhatsapp() {
     // --- VISTA 2: EDITOR DE PASOS (LO QUE YA TENÍAS PERO CONTEXTUALIZADO) ---
     return (
         <StepsEditor
+            urlinterna={urlinterna}
             sequence={selectedSequence}
             onBack={() => { setView("list"); setSelectedSequence(null); }}
         />
@@ -128,7 +129,7 @@ export default function MacroWhatsapp() {
 // ====================================================================================
 // SUB-COMPONENTE: EDITOR DE PASOS (Lógica de Drag & Drop aislada)
 // ====================================================================================
-function StepsEditor({ sequence, onBack }) {
+function StepsEditor({ sequence, onBack, urlinterna }) {
     const [items, setItems] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
@@ -229,7 +230,7 @@ function StepsEditor({ sequence, onBack }) {
                 )}
             </div>
 
-            {isModalOpen && <Modal item={editingItem} onClose={() => setIsModalOpen(false)} onSave={handleSaveItem} />}
+            {isModalOpen && <Modal item={editingItem} onClose={() => setIsModalOpen(false)} onSave={handleSaveItem} urlinterna={urlinterna} />}
         </div>
     );
 }
@@ -280,7 +281,7 @@ function ItemCard({ item, index, onEdit, onDelete, isOverlay }) {
 }
 // ... dentro del componente Modal ...
 
-function Modal({ item, onClose, onSave }) {
+function Modal({ item, onClose, onSave, urlinterna }) {
     const [formData, setFormData] = useState({ ...item, media_url: item.media_url || [] });
     const [uploading, setUploading] = useState(false); // Estado para feedback de carga
 
@@ -295,7 +296,7 @@ function Modal({ item, onClose, onSave }) {
 
         try {
             // Usamos el puerto 3001 que configuraste en tu código de Express
-            const res = await fetch("http://localhost:3001/api/subir", {
+            const res = await fetch(`${urlinterna}:3001/api/subir`, {
                 method: "POST",
                 body: data,
             });

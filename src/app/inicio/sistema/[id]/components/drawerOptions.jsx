@@ -17,7 +17,7 @@ import { generatePDF } from "./generatepdf";
 import MacroSelector from "./MacroSelector";
 import Swal from "sweetalert2";
 
-export default function DrawerOptionsComponent({ id }) {
+export default function DrawerOptionsComponent({ id, urlinterna }) {
     const { isOpen, onOpen, onOpenChange } = useDisclosure();
     const [data, setData] = useState(null);
     const [templates, setTemplates] = useState([]);
@@ -97,7 +97,7 @@ export default function DrawerOptionsComponent({ id }) {
                 if (step.delay_seconds > 0) {
                     await new Promise(r => setTimeout(r, step.delay_seconds * 1000));
                 }
-                await fetch("http://localhost:3008/v1/messages", {
+                await fetch(`${urlinterna}:3008/v1/messages`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload),

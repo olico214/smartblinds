@@ -21,7 +21,7 @@ import { CSS } from "@dnd-kit/utilities";
 import Swal from "sweetalert2";
 
 // --- COMPONENTE PRINCIPAL ---
-export default function WhatsappManager() {
+export default function WhatsappManager({ urlinterna }) {
     const [items, setItems] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
@@ -158,6 +158,7 @@ export default function WhatsappManager() {
                     item={editingItem}
                     onClose={() => setIsModalOpen(false)}
                     onSave={handleSaveItem}
+                    urlinterna={urlinterna}
                 />
             )}
         </div>
@@ -229,7 +230,7 @@ function ItemCard({ item, onEdit, onDelete, isOverlay }) {
 }
 
 // --- MODAL DE EDICIÓN ACTUALIZADO ---
-function Modal({ item, onClose, onSave }) {
+function Modal({ item, onClose, onSave, urlinterna }) {
     const [formData, setFormData] = useState({ ...item });
     const [uploading, setUploading] = useState(false);
 
@@ -253,7 +254,7 @@ function Modal({ item, onClose, onSave }) {
 
         try {
             // NOTA: Asegúrate de que tu backend permita CORS para este origen
-            const res = await fetch("http://localhost:3001/api/subir", {
+            const res = await fetch(`${urlinterna}:3001/api/subir`, {
                 method: "POST",
                 body: data
             });
