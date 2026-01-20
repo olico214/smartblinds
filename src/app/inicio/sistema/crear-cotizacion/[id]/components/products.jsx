@@ -43,6 +43,8 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
     const [precioFinalError, setPrecioFinalError] = useState("");
     const [incluyeIVA, setIncluyeIVA] = useState(false);
 
+    const [adicionaltuboAncho, setAdicionaltuboAncho] = useState(280)
+
     const [newProductForm, setNewProductForm] = useState({
         idProducto: "",
         cantidad: 1,
@@ -78,9 +80,16 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
         const porcentajeAumento = getPorcentajeAumento(totalPiezasGlobal);
 
         return productList.map(item => {
+            let costomsquare = item.actual_costo
+            if (item.ancho > 2.5) {
+                let handleMetersquare = parseFloat(item.alto) * parseFloat(item.ancho);
+                let handleCostomsquare = adicionaltuboAncho / handleMetersquare;
+                costomsquare = item.actual_costo + handleCostomsquare;
+            }
             let costoBaseProducto = (item.producto_tipo === 'Telas')
-                ? ((parseFloat(item.alto) < 1 ? 1 : (parseFloat(item.alto) * parseFloat(item.ancho) < 1 ? 1 : parseFloat(item.alto) * parseFloat(item.ancho))) * (item.actual_costo || 0)) * item.cantidad
+                ? ((parseFloat(item.alto) < 1 ? 1 : (parseFloat(item.alto) * parseFloat(item.ancho) < 1 ? 1 : parseFloat(item.alto) * parseFloat(item.ancho))) * (costomsquare || 0)) * item.cantidad
                 : (item.actual_costo || 0) * item.cantidad;
+
 
             let proteccionMonto = (item.producto_tipo === 'Telas') ? costoBaseProducto * ((parseFloat(proteccion) / 100) || 0) : 0;
             const instalacionMonto = (item.producto_tipo === 'Telas') ? costoInstalacionUnificado * item.cantidad : 0;
@@ -212,6 +221,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
             usarMargen: true,
             ubicacion: ""
         });
+        setAdicionaltuboAncho(280)
     };
 
     const handleDeleteProduct = (productId) => {
@@ -357,7 +367,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                                 </Autocomplete>
                             </div>
 
-                            <div className="md:col-span-3">
+                            <div className="md:col-span-2">
                                 <Input
                                     label="Cantidad"
                                     labelPlacement="outside"
@@ -370,7 +380,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                                 />
                             </div>
 
-                            <div className="md:col-span-3">
+                            <div className="md:col-span-2">
                                 {selectedProductInfo?.tipo === 'Telas' && (
                                     <Input
                                         label="Tolerancia"
@@ -384,6 +394,21 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                                     />
                                 )}
                             </div>
+
+                            <div className="md:col-span-2">
+                                {selectedProductInfo?.tipo === 'Telas' && (
+                                    <Input
+                                        label="Incremento por Ancho Persiana"
+                                        labelPlacement="outside"
+                                        type="number"
+                                        value={adicionaltuboAncho}
+                                        onChange={(e) => setAdicionaltuboAncho(e.target.value)}
+                                        isRequired
+                                    />
+                                )}
+                            </div>
+
+
 
                             {/* Fila 2: Ancho y Alto, Ubicación (Todo Solo para Telas) */}
                             {selectedProductInfo?.tipo === 'Telas' && (
