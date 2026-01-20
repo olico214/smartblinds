@@ -6,12 +6,12 @@ import { v4 as uuidv4 } from "uuid";
 
 // Configuración Transporter
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_ADDRESS || "smtp.hostinger.com",
-    port: Number(process.env.SMTP_PORT) || 587,
+    host: process.env.SMTP_ADDRESS,
+    port: Number(process.env.SMTP_PORT),
     secure: false,
     auth: {
-        user: process.env.SMTP_USERNAME || "oliverromero73@soiteg.com",
-        pass: process.env.SMTP_PASSWORD || "Toelenspeat1!",
+        user: process.env.SMTP_USERNAME,
+        pass: process.env.SMTP_PASSWORD,
     },
     tls: { rejectUnauthorized: false }
 });
