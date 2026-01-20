@@ -33,7 +33,7 @@ const Sidebar = ({ children, apps }) => {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
-        window.innerWidth < 1024 && // Solo aplica en móvil
+        window.innerWidth < 1024 &&
         sidebarRef.current &&
         !sidebarRef.current.contains(event.target)
       ) {
@@ -213,7 +213,6 @@ const Sidebar = ({ children, apps }) => {
           ))}
         </nav>
 
-        {/* --- Footer (Usuario) --- */}
         <div className="p-4 border-t border-slate-800 bg-slate-900 shrink-0">
           <div className={`
               flex items-center gap-2 p-2 rounded-xl bg-slate-800/50 border border-slate-700/50 transition-all duration-300
