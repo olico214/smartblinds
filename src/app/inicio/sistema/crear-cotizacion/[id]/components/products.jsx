@@ -131,20 +131,31 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
 
     const totals = useMemo(() => {
         const subtotalListPrice = products.reduce((acc, item) => acc + (item.calculated?.subtotal || 0), 0);
-        const totalDescuentos = products.reduce((acc, item) => acc + (item.calculated?.descuento || 0), 0);
+
+        // --- MODIFICACIÓN: Cálculo global del descuento ---
+        // Calculamos el descuento basado en el total de la lista y el porcentaje global
+        const descuentoPct = parseFloat(descuento) || 0;
+        const totalDescuentos = subtotalListPrice * (descuentoPct / 100);
+
+        // Subtotal Neto: Es el precio de lista menos el descuento calculado arriba
+        const subtotalNeto = subtotalListPrice - totalDescuentos;
+        // --------------------------------------------------
 
         const totalProteccion = products.reduce((acc, item) => acc + (item.calculated?.proteccion || 0), 0);
         const totalInstalacion = products.reduce((acc, item) => acc + (item.calculated?.instalacion || 0), 0);
         const totalBase = products.reduce((acc, item) => acc + (item.calculated?.costoBase || 0), 0);
         const totalMargen = products.reduce((acc, item) => acc + (item.calculated?.margen || 0), 0);
 
-        const subtotalNeto = subtotalListPrice - totalDescuentos;
-
         const precioFinalNum = parseFloat(precioFinalManual) || 0;
         const minPrecioPermitido = subtotalNeto * 0.90;
+
+        // Validación: Si el precio manual es válido, tiene prioridad.
         const esPrecioManualValido = precioFinalNum > 0 && (!isAdmin && precioFinalNum >= minPrecioPermitido || isAdmin);
 
+        // --- LÓGICA FINAL ---
+        // Si hay precio manual válido, úsalo. Si no, usa el 'subtotalNeto' (que ya tiene restado el descuento).
         const baseParaCalculo = esPrecioManualValido ? precioFinalNum : subtotalNeto;
+
         const montoIVA = baseParaCalculo * 0.16;
         const totalFinal = incluyeIVA ? baseParaCalculo + montoIVA : baseParaCalculo;
 
@@ -161,7 +172,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
             montoIVA,
             totalFinal
         };
-    }, [products, precioFinalManual, isAdmin, incluyeIVA]);
+    }, [products, precioFinalManual, isAdmin, incluyeIVA, descuento]); // Importante: 'descuento' añadido a dependencias
 
     // --- Handlers ---
     const handleAddProduct = (e) => {
@@ -473,11 +484,13 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
 
                                     <div className="flex justify-between items-center text-sm text-red-500">
                                         <span>- Descuentos</span>
+                                        {/* Usamos el valor calculado en useMemo */}
                                         <span className="font-bold">-${totals.totalDescuentos.toFixed(2)}</span>
                                     </div>
 
                                     <div className="flex justify-between items-center text-sm border-t border-dashed border-gray-300 pt-2">
                                         <span className="font-bold text-gray-700">Subtotal Neto</span>
+                                        {/* Usamos el valor calculado en useMemo (Lista - Descuento) */}
                                         <span className="font-bold text-gray-900">${totals.subtotalNeto.toFixed(2)}</span>
                                     </div>
 
