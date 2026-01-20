@@ -3,7 +3,7 @@ import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
-const urlinterna = process.env.URL_INTERNA
+const urlinterna = process.env.URL_INTERNA_WHATS
 // Configuración Transporter
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_ADDRESS,
@@ -76,7 +76,7 @@ export async function POST(req) {
                 urlMedia: fileUrl     // <--- Y aquí va el PDF de la cotización
             };
 
-            const whatsappRes = await fetch(`${urlinterna}:3008/v1/messages`, {
+            const whatsappRes = await fetch(`${urlinterna}/v1/messages`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(whatsappPayload)

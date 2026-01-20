@@ -242,7 +242,6 @@ function Modal({ item, onClose, onSave, urlinterna }) {
         }));
     };
 
-    // FUNCIÓN NUEVA: Subir imagen al servidor en puerto 3001
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -254,7 +253,7 @@ function Modal({ item, onClose, onSave, urlinterna }) {
 
         try {
             // NOTA: Asegúrate de que tu backend permita CORS para este origen
-            const res = await fetch(`${urlinterna}:3001/api/subir`, {
+            const res = await fetch(`${urlinterna}/api/subir`, {
                 method: "POST",
                 body: data
             });
@@ -263,7 +262,6 @@ function Modal({ item, onClose, onSave, urlinterna }) {
 
             const json = await res.json();
 
-            // Actualizamos el estado con la URL que devolvió el servidor 3001
             setFormData(prev => ({
                 ...prev,
                 media_url: json.url
@@ -280,7 +278,7 @@ function Modal({ item, onClose, onSave, urlinterna }) {
 
         } catch (error) {
             console.error(error);
-            Swal.fire('Error', 'No se pudo subir la imagen al servidor 3001', 'error');
+            Swal.fire('Error', 'No se pudo subir la imagen al servidor', 'error');
         } finally {
             setUploading(false);
         }
@@ -350,7 +348,7 @@ function Modal({ item, onClose, onSave, urlinterna }) {
                     {formData.type === "media" && (
                         <div className="bg-gray-50 p-4 rounded border border-gray-200">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Subir Imagen (Servidor :3001)
+                                Subir Imagen (Servidor)
                             </label>
 
                             <input

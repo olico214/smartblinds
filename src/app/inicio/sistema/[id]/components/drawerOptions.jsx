@@ -97,7 +97,7 @@ export default function DrawerOptionsComponent({ id, urlinterna }) {
                 if (step.delay_seconds > 0) {
                     await new Promise(r => setTimeout(r, step.delay_seconds * 1000));
                 }
-                await fetch(`${urlinterna}:3008/v1/messages`, {
+                await fetch(`${urlinterna}/v1/messages`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload),

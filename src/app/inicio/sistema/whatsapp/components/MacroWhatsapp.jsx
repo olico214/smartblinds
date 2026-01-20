@@ -295,8 +295,7 @@ function Modal({ item, onClose, onSave, urlinterna }) {
         data.append('foto', file); // 'foto' debe coincidir con upload.single('foto') en tu API
 
         try {
-            // Usamos el puerto 3001 que configuraste en tu código de Express
-            const res = await fetch(`${urlinterna}:3001/api/subir`, {
+            const res = await fetch(`${urlinterna}/api/subir`, {
                 method: "POST",
                 body: data,
             });
