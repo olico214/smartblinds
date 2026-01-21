@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 const urlinterna = process.env.URL_INTERNA_WHATS
-const urlinternaimages = process.env.URL_INTERNA_WHATS
+const urlinternaimages = process.env.URL_INTERNA_IMAGES
 // Configuración Transporter
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_ADDRESS,
@@ -37,11 +37,9 @@ export async function POST(req) {
         if (type === "email") {
             const mailOptions = {
                 from: `"SmartBlinds Cotizaciones" <${process.env.SMTP_USERNAME || "oliverromero73@soiteg.com"}>`,
-                to: "oliverromero73@gmail.com", // Puedes hacerlo dinámico si envías el email en formData
+                to: "oliverromero73@gmail.com",
                 subject: `Cotización #${idCotizacion} - SmartBlinds`,
-                // Usamos el mensaje seleccionado como cuerpo del correo
                 text: messageBody,
-                // Opcional: Si quieres que el template soporte HTML básico, podrías usar 'html': messageBody.replace(/\n/g, '<br>')
                 attachments: [
                     {
                         filename: `cotizacion_${idCotizacion}.pdf`,
@@ -57,15 +55,17 @@ export async function POST(req) {
 
         // --- ENVIAR WHATSAPP ---
         if (type === "whatsapp") {
-
             const data = new FormData();
-            data.append('foto', file);
+
+            // Convertimos el File a un Blob para asegurar compatibilidad
+            const blob = new Blob([await file.arrayBuffer()], { type: 'application/pdf' });
+            data.append('foto', blob, file.name); // El tercer parámetro es vital para que Multer detecte el archivo
             const res = await fetch(`${urlinternaimages}/api/subir`, {
                 method: "POST",
                 body: data,
             });
-
             const result = await res.json();
+            console.log(result)
             const whatsappPayload = {
                 number: "5213328722353",
                 message: messageBody,

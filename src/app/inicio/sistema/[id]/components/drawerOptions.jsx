@@ -139,6 +139,8 @@ export default function DrawerOptionsComponent({ id, urlinterna }) {
             formData.append("type", selectedChannel);
             formData.append("id", id);
             formData.append("message", finalMessage);
+            formData.append("phone", data.cotizacion.cliente_telefono);
+            formData.append("email", data.cotizacion.cliente_email);
 
             const res = await fetch("/api/send-document", { method: "POST", body: formData });
             if (!res.ok) throw new Error("Error en envío");
