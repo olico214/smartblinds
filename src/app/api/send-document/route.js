@@ -23,6 +23,7 @@ export async function POST(req) {
         const file = formData.get("pdf");
         const type = formData.get("type");
         const phone = formData.get("phone");
+        const fullname = formData.get("fullname");
         const email = formData.get("email");
         const idCotizacion = formData.get("id");
         // --- RECIBIMOS EL MENSAJE PERSONALIZADO ---
@@ -44,7 +45,7 @@ export async function POST(req) {
                 text: messageBody,
                 attachments: [
                     {
-                        filename: `cotizacion_${idCotizacion}.pdf`,
+                        filename: `${fullname}.pdf`,
                         content: buffer,
                         contentType: "application/pdf",
                     },
@@ -58,7 +59,7 @@ export async function POST(req) {
         // --- ENVIAR WHATSAPP ---
         if (type === "whatsapp") {
             const data = new FormData();
-
+            data.append('nombre_personalizado', fullname);
             const blob = new Blob([await file.arrayBuffer()], { type: 'application/pdf' });
             data.append('foto', blob, file.name); // El tercer parámetro es vital para que Multer detecte el archivo
             const res = await fetch(`${urlinternaimages}/api/subir`, {

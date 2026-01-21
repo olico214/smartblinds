@@ -136,7 +136,8 @@ export default function DrawerOptionsComponent({ id, urlinterna }) {
             const finalMessage = templateItem.type === 'template'
                 ? processMessage(templateItem.content)
                 : `Cotización: ${templateItem.name}`;
-
+            const total = parseFloat(data.cotizacion.precioReal);
+            const fullname = `MXVT1${data.cotizacion.id} ${data.cotizacion.cliente_nombre} ${total}`
             const pdfBlob = generatePDF(data, 'blob');
             const formData = new FormData();
             formData.append("pdf", pdfBlob, `cotizacion_${id}.pdf`);
@@ -145,6 +146,7 @@ export default function DrawerOptionsComponent({ id, urlinterna }) {
             formData.append("message", finalMessage);
             formData.append("phone", data.cotizacion.cliente_telefono);
             formData.append("email", data.cotizacion.cliente_email);
+            formData.append("fullname", fullname);
 
             const res = await fetch("/api/send-document", { method: "POST", body: formData });
             if (!res.ok) throw new Error("Error en envío");
