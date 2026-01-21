@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 const urlinterna = process.env.URL_INTERNA_WHATS
+const urlinternaimages = process.env.URL_INTERNA_WHATS
 // Configuración Transporter
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_ADDRESS,
@@ -56,24 +57,21 @@ export async function POST(req) {
 
         // --- ENVIAR WHATSAPP ---
         if (type === "whatsapp") {
-            // Guardar PDF temporalmente
-            const tempFileName = `${uuidv4()}.pdf`;
-            const publicPath = path.join(process.cwd(), "public", "temp");
 
-            if (!fs.existsSync(publicPath)) fs.mkdirSync(publicPath, { recursive: true });
+            const data = new FormData();
+            data.append('foto', file);
+            const res = await fetch(`${urlinternaimages}/api/subir`, {
+                method: "POST",
+                body: data,
+            });
 
-            const filePath = path.join(publicPath, tempFileName);
-            fs.writeFileSync(filePath, buffer);
-
-            const protocol = req.headers.get('x-forwarded-proto') || 'http';
-            const host = req.headers.get('host');
-            const fileUrl = `${protocol}://${host}/temp/${tempFileName}`;
-
+            const result = await res.json();
+            result.url
             // Enviar al Bot
             const whatsappPayload = {
                 number: "5213328722353",
-                message: messageBody, // <--- Aquí va el texto con variables rellenas (Hola Cliente...)
-                urlMedia: buffer     // <--- Y aquí va el PDF de la cotización
+                message: messageBody,
+                urlMedia: result.url
             };
 
             const whatsappRes = await fetch(`${urlinterna}/v1/messages`, {
