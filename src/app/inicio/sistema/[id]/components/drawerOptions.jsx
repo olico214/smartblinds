@@ -140,7 +140,7 @@ export default function DrawerOptionsComponent({ id, urlinterna }) {
             const fullname = `MXVT1${data.cotizacion.id} ${data.cotizacion.cliente_nombre} ${total}`
             const pdfBlob = generatePDF(data, 'blob');
             const formData = new FormData();
-            formData.append("pdf", pdfBlob, `cotizacion_${id}.pdf`);
+            formData.append("pdf", pdfBlob, `${fullname}.pdf`);
             formData.append("type", selectedChannel);
             formData.append("id", id);
             formData.append("message", finalMessage);
