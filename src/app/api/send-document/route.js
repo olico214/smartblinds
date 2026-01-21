@@ -73,7 +73,7 @@ export async function POST(req) {
             const whatsappPayload = {
                 number: "5213328722353",
                 message: messageBody, // <--- Aquí va el texto con variables rellenas (Hola Cliente...)
-                urlMedia: fileUrl     // <--- Y aquí va el PDF de la cotización
+                urlMedia: buffer     // <--- Y aquí va el PDF de la cotización
             };
 
             const whatsappRes = await fetch(`${urlinterna}/v1/messages`, {
