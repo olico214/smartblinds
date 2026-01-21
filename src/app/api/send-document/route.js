@@ -22,6 +22,8 @@ export async function POST(req) {
         const formData = await req.formData();
         const file = formData.get("pdf");
         const type = formData.get("type");
+        const phone = formData.get("phone");
+        const email = formData.get("email");
         const idCotizacion = formData.get("id");
         // --- RECIBIMOS EL MENSAJE PERSONALIZADO ---
         const messageBody = formData.get("message") || `Adjunto cotización #${idCotizacion}`;
@@ -37,7 +39,7 @@ export async function POST(req) {
         if (type === "email") {
             const mailOptions = {
                 from: `"SmartBlinds Cotizaciones" <${process.env.SMTP_USERNAME || "oliverromero73@soiteg.com"}>`,
-                to: "oliverromero73@gmail.com",
+                to: email,
                 subject: `Cotización #${idCotizacion} - SmartBlinds`,
                 text: messageBody,
                 attachments: [
@@ -57,7 +59,6 @@ export async function POST(req) {
         if (type === "whatsapp") {
             const data = new FormData();
 
-            // Convertimos el File a un Blob para asegurar compatibilidad
             const blob = new Blob([await file.arrayBuffer()], { type: 'application/pdf' });
             data.append('foto', blob, file.name); // El tercer parámetro es vital para que Multer detecte el archivo
             const res = await fetch(`${urlinternaimages}/api/subir`, {
@@ -65,9 +66,8 @@ export async function POST(req) {
                 body: data,
             });
             const result = await res.json();
-            console.log(result)
             const whatsappPayload = {
-                number: "5213328722353",
+                number: phone,
                 message: messageBody,
                 urlMedia: result.url
             };

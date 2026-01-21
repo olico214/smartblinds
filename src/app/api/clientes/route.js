@@ -87,12 +87,7 @@ export async function GET(req) {
         // La consulta une las tablas clientes y canal_venta para obtener el nombre del canal
         const query = `
             SELECT 
-                c.id,
-                c.nombre,
-                c.telefono,
-                c.email,
-                c.ciudad,
-                c.frecuente,
+               c.*,
                 cv.nombre AS canal_venta_nombre
             FROM 
                 clientes AS c
@@ -112,5 +107,42 @@ export async function GET(req) {
             { ok: false, error: "Error al obtener los clientes." },
             { status: 500 }
         );
+    }
+}
+
+
+
+export async function PUT(req) {
+    try {
+        const {
+            id, // Necesitamos el ID para el WHERE
+            nombre, telefono, email, domicilio, estado,
+            ciudad, colonia, frecuente, selected_canal_venta, tipo, cp
+        } = await req.json();
+
+        if (!id) {
+            return NextResponse.json({ ok: false, error: "ID de cliente no proporcionado." }, { status: 400 });
+        }
+
+        const query = `
+            UPDATE clientes SET 
+                nombre = ?, telefono = ?, email = ?, domicilio = ?, estado = ?, 
+                ciudad = ?, colonia = ?, frecuente = ?, selected_canal_venta = ?, 
+                tipo = ?, cp = ?
+            WHERE id = ?
+        `;
+
+        const values = [
+            nombre, telefono, email, domicilio, estado,
+            ciudad, colonia, frecuente, selected_canal_venta, tipo, cp, id
+        ];
+
+        await pool.query(query, values);
+
+        return NextResponse.json({ ok: true, message: "Cliente actualizado exitosamente" });
+
+    } catch (error) {
+        console.error("Error en PUT /api/clientes:", error);
+        return NextResponse.json({ ok: false, error: "Error al actualizar el cliente." }, { status: 500 });
     }
 }

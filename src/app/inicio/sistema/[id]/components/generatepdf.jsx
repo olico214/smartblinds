@@ -21,9 +21,13 @@ export const generatePDF = (data, action = 'download') => {
     const imgWidth = 50;
     const imgHeight = 15;
     const xPos = 145; // Hacia la derecha de la página
-    const yPos = 18;  // Cerca de la parte superior
+    const yPos = 10;  // Cerca de la parte superior
 
-    doc.addImage(LOGO_BASE64, 'JPEG', xPos, yPos, imgWidth, imgHeight);
+    const imgProps = doc.getImageProperties(LOGO_BASE64);
+    const aspect = imgProps.width / imgProps.height;
+    const newHeight = imgWidth / aspect; // Calcula la altura proporcional al ancho de 50
+
+    doc.addImage(LOGO_BASE64, 'PNG', xPos, yPos, imgWidth, newHeight, undefined, 'FAST');
 
     // --- DATOS DE CONTACTO ---
     doc.setFontSize(10);
@@ -123,7 +127,7 @@ export const generatePDF = (data, action = 'download') => {
         doc.text('https://smartblinds.mx/', pageWidth / 2, pageHeight - 4, { align: 'center' });
     }
 
-    const fileName = `cotizacion_${cotizacion.cliente_nombre}.pdf`;
+    const fileName = `MXVT1${cotizacion.id} ${cotizacion.cliente_nombre} ${total}.pdf`;
 
     if (action === 'blob') {
         // Devuelve el objeto Blob para enviarlo al servidor

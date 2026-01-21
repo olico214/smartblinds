@@ -25,6 +25,8 @@ export default function DrawerOptionsComponent({ id, urlinterna }) {
     const [loading, setLoading] = useState(false);
     const [view, setView] = useState("menu"); // menu | templates | macros
     const [selectedChannel, setSelectedChannel] = useState(null);
+    const [email, setEmail] = useState(false)
+    const [whatsapp, setWhatsapp] = useState(false)
 
     // 1. Carga de datos iniciales
     useEffect(() => {
@@ -33,6 +35,9 @@ export default function DrawerOptionsComponent({ id, urlinterna }) {
             try {
                 const response = await fetch(`/api/cotizacion/${id}/generate`);
                 const result = await response.json();
+                const { cotizacion } = result;
+                cotizacion.cliente_telefono ? setWhatsapp(true) : setWhatsapp(false)
+                cotizacion.cliente_email ? setEmail(true) : setEmail(false)
                 setData(result);
             } catch (error) { console.error(error); }
         };
@@ -75,7 +80,7 @@ export default function DrawerOptionsComponent({ id, urlinterna }) {
             const res = await fetch(`/api/admin/macros?sequence_id=${macroId}`);
             const steps = await res.json();
 
-            const clientPhone = data.cotizacion.cliente_telefono;
+
 
             for (const step of steps) {
                 if (!step.active) continue;
@@ -83,17 +88,16 @@ export default function DrawerOptionsComponent({ id, urlinterna }) {
                 let payload = {};
                 if (step.type === "image") {
                     payload = {
-                        number: clientPhone,
+                        number: data.cotizacion.cliente_telefono,
                         message: step.content,
                         urlMedia: step.type === "image" ? step.media_url[0] : null,
                     };
                 } else {
                     payload = {
-                        number: clientPhone,
+                        number: data.cotizacion.cliente_telefono,
                         message: step.content,
                     };
                 }
-                console.log(payload)
                 if (step.delay_seconds > 0) {
                     await new Promise(r => setTimeout(r, step.delay_seconds * 1000));
                 }
@@ -166,7 +170,6 @@ export default function DrawerOptionsComponent({ id, urlinterna }) {
                 Swal.fire("¡Enviado!", "Correo enviado con éxito", "success");
             }
 
-            onOpenChange(false);
             setView("menu");
         } catch (error) {
             setLoading(false);
@@ -196,8 +199,16 @@ export default function DrawerOptionsComponent({ id, urlinterna }) {
                             <DrawerBody className="p-4 relative">
                                 {view === "menu" && (
                                     <div className="flex flex-col gap-3">
-                                        <Button className="bg-blue-600 text-white" size="lg" startContent={<FaEnvelope />} onPress={() => { setSelectedChannel('email'); setView('templates'); }}>Enviar por Email</Button>
-                                        <Button className="bg-green-600 text-white" size="lg" startContent={<FaWhatsapp />} onPress={() => { setSelectedChannel('whatsapp'); setView('templates'); }}>Enviar por WhatsApp</Button>
+                                        {email ?
+                                            <Button className="bg-blue-600 text-white" size="lg" startContent={<FaEnvelope />} onPress={() => { setSelectedChannel('email'); setView('templates'); }}>Enviar por Email {data.cotizacion.cliente_email}</Button>
+
+                                            :
+                                            null}
+                                        {whatsapp ?
+                                            <Button className="bg-green-600 text-white" size="lg" startContent={<FaWhatsapp />} onPress={() => { setSelectedChannel('whatsapp'); setView('templates'); }}>Enviar por WhatsApp {data.cotizacion.cliente_telefono}</Button>
+                                            :
+                                            null
+                                        }
                                         <Button color="secondary" variant="flat" onPress={() => generatePDF(data, 'download')} startContent={<FaFilePdf />}>Descargar PDF</Button>
                                     </div>
                                 )}

@@ -135,7 +135,7 @@ export default function CanalVentaComponent() {
                                 <h3 className="font-semibold text-lg mb-2">Canales Existentes</h3>
                                 <Table
                                     aria-label="Tabla de canales de venta"
-                                    height="300px" // Altura fija para la tabla con scroll
+                                    className="max-h-[350px] overflow-auto"
                                 >
                                     <TableHeader>
                                         <TableColumn>NOMBRE</TableColumn>

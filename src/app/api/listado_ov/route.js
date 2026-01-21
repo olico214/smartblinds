@@ -33,6 +33,8 @@ export async function GET() {
 
 export async function POST(req) {
     try {
+        const authorization = req.headers.get("Authorization");
+        const user = authorization.split(" ")[1];
         const { idCliente, idUser, idTipoproyecto, id_envio, idAgente, nombreProyecto, lineaCotizada } = await req.json();
 
         if (!idCliente || !idTipoproyecto || !lineaCotizada) { // idUser también debería ser requerido
@@ -77,12 +79,12 @@ export async function POST(req) {
         }
 
         const query = `
-            INSERT INTO listado_ov (idCliente, idUser, idAgente, idTipoproyecto, id_envio, estatus, createdDate, nombreProyecto, linea_cotizada)
-            VALUES (?, ?, ?, ?, ?, 'Nuevo', NOW(), ?, ?)
+            INSERT INTO listado_ov (idCliente, idUser, idAgente, idTipoproyecto, id_envio, estatus, createdDate, nombreProyecto, linea_cotizada,createdBy)
+            VALUES (?, ?, ?, ?, ?, 'Nuevo', NOW(), ?, ?,?)
         `;
 
         // CORREGIDO: Usar la variable 'finalNombreProyecto' que contiene el nombre correcto.
-        const values = [idCliente, idUser, idAgente, idTipoproyecto, id_envio || null, finalNombreProyecto, lineaCotizada];
+        const values = [idCliente, idUser, idAgente, idTipoproyecto, id_envio || null, finalNombreProyecto, lineaCotizada, user];
 
         const [result] = await pool.query(query, values);
 

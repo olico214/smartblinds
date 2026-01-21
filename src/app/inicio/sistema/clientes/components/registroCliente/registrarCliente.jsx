@@ -1,243 +1,225 @@
-"use client"
-
+"use client";
 import React, { useState, useEffect } from "react";
 import {
-    Modal,
-    ModalContent,
-    ModalHeader,
-    ModalBody,
-    ModalFooter,
-    Button,
-    useDisclosure,
-    Input,
-    Select,
-    SelectItem,
-    Checkbox,
-    Textarea
+    Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
+    Button, Input, Select, SelectItem, Checkbox, Textarea, Divider
 } from "@nextui-org/react";
+import { User, Phone, Mail, MapPin, Briefcase } from "lucide-react";
 import CanalVentaComponent from "./canal_venta/registrarCanalVenta";
 
-// Defines the initial empty state for the form
 const initialClientState = {
-    nombre: '',
-    telefono: '',
-    email: '',
-    domicilio: '',
-    estado: '',
-    ciudad: '',
-    colonia: '',
-    frecuente: false,
-    selected_canal_venta: '',
-    cp: '',
-    tipo: ''
+    nombre: '', telefono: '', email: '', domicilio: '',
+    estado: '', ciudad: '', colonia: '', frecuente: false,
+    selected_canal_venta: '', cp: '', tipo: ''
 };
 
-export default function ClienteComponent({ type = 'new', fetchClientes = null }) {
-    const { isOpen, onOpen, onOpenChange } = useDisclosure();
+export default function ClienteModal({ isOpen, onClose, onOpenChange, clientToEdit, refreshTable }) {
     const [clientData, setClientData] = useState(initialClientState);
-    const [canalesVenta, setCanalesVenta] = useState([]); // State for sales channels
+    const [canalesVenta, setCanalesVenta] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState({}); // Estado para errores
 
-    // Fetches sales channels when the modal is opened
-
-
+    // Cargar canales de venta al montar
     useEffect(() => {
         if (isOpen) {
-            const fetchCanales = async () => {
-                try {
-                    // This endpoint needs to be created to fetch sales channels
-                    const res = await fetch('/api/canales');
-                    const data = await res.json();
-                    if (data.ok) {
-                        setCanalesVenta(data.data);
-                    }
-                } catch (error) {
-                    console.error("Error fetching sales channels:", error);
-                }
-            };
-            fetchCanales();
+            fetch('/api/canales').then(res => res.json()).then(d => {
+                if (d.ok) setCanalesVenta(d.data);
+            });
         }
     }, [isOpen]);
 
-    // Handles changes in form inputs
-    const handleInputChange = (e) => {
+    // Detectar si es Edición o Creación
+    useEffect(() => {
+        if (clientToEdit) {
+            const cleanPhone = clientToEdit.telefono?.startsWith('521')
+                ? clientToEdit.telefono.substring(3)
+                : clientToEdit.telefono;
+
+            setClientData({ ...clientToEdit, telefono: cleanPhone });
+        } else {
+            setClientData(initialClientState);
+        }
+        setErrors({}); // Limpiar errores al abrir/cambiar modo
+    }, [clientToEdit, isOpen]);
+
+    const handleChange = (e) => {
         const { name, value } = e.target;
         setClientData(prev => ({ ...prev, [name]: value }));
+
+        // Limpiar el error del campo que se está escribiendo
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: null, general: null }));
+        }
     };
 
-    // Handles changes in the select component
-    const handleSelectChange = (e) => {
-        setClientData(prev => ({ ...prev, selected_canal_venta: e.target.value }));
+    // --- FUNCIÓN DE VALIDACIÓN ---
+    const validateForm = () => {
+        const newErrors = {};
+        const { email, telefono, nombre } = clientData;
+
+        // Limpiamos el teléfono de caracteres no numéricos para validar longitud
+        const cleanPhone = telefono.replace(/\D/g, "");
+
+        // 1. Validación de Nombre
+        if (!nombre.trim()) {
+            newErrors.nombre = "El nombre es obligatorio.";
+        }
+
+        // 2. Validación: Al menos uno (Teléfono o Email)
+        if (!email.trim() && !cleanPhone) {
+            const msg = "Debe ingresar al menos un teléfono o email.";
+            newErrors.email = msg;
+            newErrors.telefono = msg;
+            newErrors.general = msg;
+        }
+
+        // 3. Validación de formato de Email (si no está vacío)
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (email.trim() && !emailRegex.test(email)) {
+            newErrors.email = "El formato del correo es inválido.";
+        }
+
+        // 4. Validación de longitud de Teléfono (si no está vacío)
+        // Como tu lógica posterior espera 10 dígitos para agregar el 521, forzamos los 10 dígitos.
+        if (cleanPhone && cleanPhone.length !== 10) {
+            newErrors.telefono = "El teléfono debe tener 10 dígitos.";
+        }
+
+        setErrors(newErrors);
+        // Si el objeto newErrors está vacío, retorna true (válido)
+        return Object.keys(newErrors).length === 0;
     };
 
-    // Handles changes in the checkbox component
-    const handleCheckboxChange = (isSelected) => {
-        setClientData(prev => ({ ...prev, frecuente: isSelected }));
-    };
+    const handleSubmit = async () => {
+        // Ejecutar validación antes de enviar
+        if (!validateForm()) {
+            return; // Detiene la ejecución si hay errores
+        }
 
-    // Submits the form data to the API
-    const handleSubmit = async (onClose) => {
-
+        setLoading(true);
         try {
-            // This endpoint needs to be created to save the new client
+            const rawPhone = clientData.telefono.replace(/\D/g, "");
+            const finalPhone = rawPhone.length === 10 ? `521${rawPhone}` : rawPhone;
+
+            const payload = { ...clientData, telefono: finalPhone };
+            const method = clientToEdit?.id ? 'PUT' : 'POST';
+
             const res = await fetch('/api/clientes', {
-                method: 'POST',
+                method: method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(clientData),
+                body: JSON.stringify(payload)
             });
 
-            if (!res.ok) {
-                throw new Error('Failed to save client');
-            }
+            const json = await res.json();
 
-            const result = await res.json();
-            setClientData(initialClientState); // Resets the form
-            onClose(); // Closes the modal
-            fetchClientes()
+            if (json.ok) {
+                refreshTable();
+                onClose();
+            } else {
+                alert("Error: " + json.error);
+            }
         } catch (error) {
-            console.error("Error submitting form:", error);
+            console.error(error);
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <>
-            {type === 'new'
-                ?
-                <Button onPress={onOpen} color="primary">Registrar Cliente</Button>
-                :
-                <Button onPress={onOpen} color="primary" variant="light" className="max-w-sm">Registrar Cliente</Button>
-            }
-            <Modal
-                isOpen={isOpen}
-                onOpenChange={onOpenChange}
-                placement="center"
-                size="5xl"
-                isDismissable={false}
-            >
-                <ModalContent>
-                    {(onClose) => (
-                        <>
-                            <ModalHeader className="flex flex-col gap-1">Registro de Nuevo Cliente</ModalHeader>
-                            <ModalBody>
-                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 max-h-[560px] overflow-auto">
-                                    <Input
-                                        isRequired
-                                        label="Nombre Completo"
-                                        variant="bordered"
-                                        name="nombre"
-                                        value={clientData.nombre}
-                                        onChange={handleInputChange}
-                                        className="sm:col-span-3"
-                                    />
-                                    <div className=" flex gap-2">
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="4xl" scrollBehavior="inside" backdrop="blur">
+            <ModalContent>
+                {(onClose) => (
+                    <>
+                        <ModalHeader className="flex flex-col gap-1 border-b">
+                            <h2 className="text-xl font-bold text-primary">
+                                {clientToEdit ? `Editar: ${clientToEdit.nombre}` : "Registrar Nuevo Cliente"}
+                            </h2>
+                        </ModalHeader>
+                        <ModalBody className="py-6">
+                            {/* SECCIÓN 1: DATOS GENERALES */}
+                            <div className="flex items-center gap-2 mb-2 text-primary"><User size={18} /> Información</div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Input
+                                    label="Nombre Completo"
+                                    name="nombre"
+                                    value={clientData.nombre}
+                                    onChange={handleChange}
+                                    isRequired
+                                    isInvalid={!!errors.nombre}
+                                    errorMessage={errors.nombre}
+                                />
+                                <Select label="Tipo" selectedKeys={clientData.tipo ? [clientData.tipo] : []} onChange={(e) => handleChange({ target: { name: 'tipo', value: e.target.value } })}>
+                                    <SelectItem key="Final">Final</SelectItem>
+                                    <SelectItem key="Intermediario">Intermediario</SelectItem>
+                                </Select>
+                            </div>
 
-                                        <Select
-                                            isRequired
-                                            label="Canal de Venta"
-                                            name="selected_canal_venta"
-                                            variant="bordered"
-                                            selectedKeys={clientData.selected_canal_venta ? [clientData.selected_canal_venta] : []}
-                                            onChange={handleSelectChange}
-                                        >
-                                            {canalesVenta.map((canal) => (
-                                                <SelectItem key={canal.id} value={canal.id}>
-                                                    {canal.nombre}
-                                                </SelectItem>
-                                            ))}
+                            <Divider className="my-4" />
+
+                            {/* SECCIÓN 2: CONTACTO Y ORIGEN */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-2 text-primary"><Phone size={18} /> Contacto</div>
+                                    <div className="space-y-3">
+                                        <Input
+                                            label="Teléfono"
+                                            name="telefono"
+                                            value={clientData.telefono}
+                                            onChange={handleChange}
+                                            startContent={<span className="text-small text-default-400">+521</span>}
+                                            isInvalid={!!errors.telefono}
+                                            errorMessage={errors.telefono}
+                                            description={!errors.telefono && "Ingresa los 10 dígitos"}
+                                        />
+                                        <Input
+                                            label="Email"
+                                            name="email"
+                                            value={clientData.email}
+                                            onChange={handleChange}
+                                            startContent={<Mail size={16} />}
+                                            isInvalid={!!errors.email}
+                                            errorMessage={errors.email}
+                                        />
+                                        {/* Mensaje general si faltan ambos */}
+                                        {errors.general && (
+                                            <p className="text-tiny text-danger font-semibold mt-1">* {errors.general}</p>
+                                        )}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2 mb-2 text-primary"><Briefcase size={18} /> Origen</div>
+
+                                    <div className="flex ">
+                                        <Select label="Canal de Venta" selectedKeys={clientData.selected_canal_venta ? [String(clientData.selected_canal_venta)] : []} onChange={(e) => handleChange({ target: { name: 'selected_canal_venta', value: e.target.value } })}>
+                                            {canalesVenta.map((c) => (<SelectItem key={c.id}>{c.nombre}</SelectItem>))}
                                         </Select>
                                         <CanalVentaComponent />
                                     </div>
-                                    <Input
-                                        label="Teléfono"
-                                        name="telefono"
-                                        variant="bordered"
-                                        value={clientData.telefono}
-                                        onChange={handleInputChange}
-                                    />
-                                    <Input
-                                        label="Email"
-                                        variant="bordered"
-                                        type="email"
-                                        name="email"
-                                        value={clientData.email}
-                                        onChange={handleInputChange}
-                                    />
-                                    <Select
-                                        label="Tipo de cliente"
-                                        selectedKeys={clientData.tipo ? [clientData.tipo] : []}
-                                        variant="bordered"
-                                        onChange={((e) => {
-                                            setClientData(prev => ({ ...prev, tipo: e.target.value }));
-                                        })}
-                                    >
-                                        <SelectItem key={"Final"} value={"Final"}>Final</SelectItem>
-                                        <SelectItem key={"Intermediario"} value={"Intermediario"}>Intermediario</SelectItem>
-                                        <SelectItem key={"Revendedor"} value={"Revendedor"}>Revendedor</SelectItem>
-                                        <SelectItem key={"Instalador"} value={"Instalador"}>Instalador</SelectItem>
-                                        <SelectItem key={"Mantenimiento"} value={"Mantenimiento"}>Mantenimiento</SelectItem>
-                                    </Select>
-
-                                    <Checkbox
-                                        isSelected={clientData.frecuente}
-                                        variant="bordered"
-                                        onValueChange={handleCheckboxChange}
-                                    >
-                                        Cliente Frecuente
-                                    </Checkbox>
-                                    <Textarea
-                                        label="Domicilio"
-                                        name="domicilio"
-                                        value={clientData.domicilio}
-                                        onChange={handleInputChange}
-                                        variant="bordered"
-                                        className="sm:col-span-4"
-                                    />
-                                    <Input
-                                        label="Estado"
-                                        name="estado"
-                                        value={clientData.estado}
-                                        variant="bordered"
-                                        onChange={handleInputChange}
-                                    />
-                                    <Input
-                                        label="Ciudad"
-                                        name="ciudad"
-                                        variant="bordered"
-                                        value={clientData.ciudad}
-                                        onChange={handleInputChange}
-                                    />
-                                    <Input
-                                        label="Colonia"
-                                        name="colonia"
-                                        variant="bordered"
-                                        value={clientData.colonia}
-                                        onChange={handleInputChange}
-                                    />
-                                    <Input
-                                        label="Codigo Postal"
-                                        variant="bordered"
-                                        name="cp"
-                                        value={clientData.cp}
-                                        onChange={handleInputChange}
-                                    />
-
-
+                                    <Checkbox className="mt-2" isSelected={clientData.frecuente} onValueChange={(v) => setClientData(p => ({ ...p, frecuente: v }))}>Cliente Frecuente</Checkbox>
                                 </div>
-                            </ModalBody>
-                            <ModalFooter>
-                                <Button color="danger" variant="light" onPress={() => {
-                                    setClientData(initialClientState); // Resets form on cancel
-                                    onClose();
-                                }}>
-                                    Cancelar
-                                </Button>
-                                <Button color="primary" onPress={() => handleSubmit(onClose)}>
-                                    Guardar Cliente
-                                </Button>
-                            </ModalFooter>
-                        </>
-                    )}
-                </ModalContent>
-            </Modal>
-        </>
+                            </div>
+
+                            <Divider className="my-4" />
+
+                            {/* SECCIÓN 3: UBICACIÓN */}
+                            <div className="flex items-center gap-2 mb-2 text-primary"><MapPin size={18} /> Ubicación</div>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <Textarea label="Domicilio" name="domicilio" value={clientData.domicilio} onChange={handleChange} className="md:col-span-4" />
+                                <Input label="C.P." name="cp" value={clientData.cp} onChange={handleChange} />
+                                <Input label="Estado" name="estado" value={clientData.estado} onChange={handleChange} />
+                                <Input label="Ciudad" name="ciudad" value={clientData.ciudad} onChange={handleChange} />
+                                <Input label="Colonia" name="colonia" value={clientData.colonia} onChange={handleChange} />
+                            </div>
+                        </ModalBody>
+                        <ModalFooter>
+                            <Button color="danger" variant="light" onPress={onClose}>Cancelar</Button>
+                            <Button color="primary" isLoading={loading} onPress={handleSubmit}>
+                                {clientToEdit ? "Guardar Cambios" : "Crear Cliente"}
+                            </Button>
+                        </ModalFooter>
+                    </>
+                )}
+            </ModalContent>
+        </Modal>
     );
 }
