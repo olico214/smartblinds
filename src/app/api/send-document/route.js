@@ -66,8 +66,6 @@ export async function POST(req) {
             });
 
             const result = await res.json();
-            result.url
-            // Enviar al Bot
             const whatsappPayload = {
                 number: "5213328722353",
                 message: messageBody,
