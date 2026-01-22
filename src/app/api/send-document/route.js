@@ -41,7 +41,7 @@ export async function POST(req) {
             const mailOptions = {
                 from: `"SmartBlinds Cotizaciones" <${process.env.SMTP_USERNAME || "oliverromero73@soiteg.com"}>`,
                 to: email,
-                subject: `Cotización #${idCotizacion} - SmartBlinds`,
+                subject: `Cotización ${fullname} - SmartBlinds`,
                 text: messageBody,
                 attachments: [
                     {

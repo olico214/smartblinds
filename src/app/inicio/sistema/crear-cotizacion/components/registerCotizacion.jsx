@@ -10,7 +10,8 @@ import {
     Input,
     Chip,
     Card,
-    CardBody
+    CardBody,
+    useDisclosure // <--- IMPORTANTE: Importamos esto
 } from "@nextui-org/react";
 import {
     FaQuestion,
@@ -23,7 +24,9 @@ import {
 } from "react-icons/fa";
 import { IoIosCreate } from "react-icons/io";
 import Swal from "sweetalert2";
+// Asegúrate de que la ruta sea correcta a tu componente refactorizado
 import ClienteComponent from "../../clientes/components/registroCliente/registrarCliente";
+import { PlusCircle } from "lucide-react";
 
 const initialFormState = {
     idCliente: "",
@@ -56,6 +59,14 @@ export default function CotizacionForm({ isOpen, onClose, user }) {
     const [isLoading, setIsLoading] = useState(false);
     const [isCatalogsLoading, setIsCatalogsLoading] = useState(true);
 
+    // --- NUEVO: Control para el Modal de Crear Cliente ---
+    // Esto permite abrir el modal "encima" de este modal
+    const {
+        isOpen: isClientModalOpen,
+        onOpen: onClientModalOpen,
+        onOpenChange: onClientModalOpenChange
+    } = useDisclosure();
+
     useEffect(() => {
         if (isOpen) {
             fetchCatalogs();
@@ -63,7 +74,10 @@ export default function CotizacionForm({ isOpen, onClose, user }) {
     }, [isOpen]);
 
     const fetchCatalogs = async () => {
-        setIsCatalogsLoading(true);
+        // No ponemos loading true aquí para evitar parpadeos si solo refrescamos la lista
+        // solo lo usamos la primera vez o si necesitamos bloquear UI
+        if (catalogs.clientes.length === 0) setIsCatalogsLoading(true);
+
         try {
             const res = await fetch('/api/initial-data?user=' + user);
             const data = await res.json();
@@ -144,282 +158,298 @@ export default function CotizacionForm({ isOpen, onClose, user }) {
     };
 
     return (
-        <Modal
-            isOpen={isOpen}
-            onOpenChange={onClose}
-            size="5xl"
-            placement="center"
-            isDismissable={false}
-            className="bg-gradient-to-br from-gray-900 to-gray-950 "
-            backdrop="blur"
-        >
-            <ModalContent>
-                {(onCloseCallback) => (
-                    <>
-                        <ModalHeader className="flex flex-col gap-1 border-b border-gray-800">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-500/20 rounded-lg">
-                                    <IoIosCreate className="text-xl text-blue-400" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-white">Nueva Cotización</h2>
-                                    <p className="text-sm text-gray-400">Complete todos los campos requeridos</p>
-                                </div>
-                            </div>
-                        </ModalHeader>
-
-                        <ModalBody className="py-6 overflow-auto sm:max-h-[380px] lg:max-h-[720px]">
-                            {isCatalogsLoading ? (
-                                <div className="flex justify-center items-center h-64">
-                                    <div className="text-center">
-                                        <Spinner size="lg" color="primary" className="mb-4" />
-                                        <p className="text-gray-400">Cargando datos del sistema...</p>
+        <>
+            <Modal
+                isOpen={isOpen}
+                onOpenChange={onClose}
+                size="5xl"
+                placement="center"
+                isDismissable={false}
+                className="bg-gradient-to-br from-gray-900 to-gray-950 "
+                backdrop="blur"
+            >
+                <ModalContent>
+                    {(onCloseCallback) => (
+                        <>
+                            <ModalHeader className="flex flex-col gap-1 border-b border-gray-800">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-blue-500/20 rounded-lg">
+                                        <IoIosCreate className="text-xl text-blue-400" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-white">Nueva Cotización</h2>
+                                        <p className="text-sm text-gray-400">Complete todos los campos requeridos</p>
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="space-y-6">
-                                    {/* Sección 1: Información Principal */}
-                                    <Card className="bg-gray-800/50 border border-gray-700 text-white">
-                                        <CardBody className="p-5">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {/* Cliente */}
-                                                <div className="space-y-2">
-                                                    <label className="flex items-center gap-2 text-sm font-medium ">
-                                                        <FaUserTie className="text-blue-400" />
-                                                        Cliente *
-                                                    </label>
-                                                    <div className="flex gap-2">
-                                                        <Autocomplete
-                                                            name="idCliente"
-                                                            placeholder="Seleccionar cliente"
-                                                            selectedKey={formData.idCliente}
-                                                            defaultItems={catalogs.clientes}
-                                                            onSelectionChange={(e) => {
-                                                                setFormData(prev => ({ ...prev, ["idCliente"]: e }));
-                                                            }}
-                                                            className="flex-grow"
-                                                            variant="bordered"
-                                                            classNames={{
-                                                                base: "bg-gray-900/50",
-                                                                listbox: "bg-gray-900",
-                                                                popoverContent: "bg-gray-900"
-                                                            }}
+                            </ModalHeader>
+
+                            <ModalBody className="py-6 overflow-auto sm:max-h-[380px] lg:max-h-[720px]">
+                                {isCatalogsLoading ? (
+                                    <div className="flex justify-center items-center h-64">
+                                        <div className="text-center">
+                                            <Spinner size="lg" color="primary" className="mb-4" />
+                                            <p className="text-gray-400">Cargando datos del sistema...</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        {/* Sección 1: Información Principal */}
+                                        <Card className="bg-gray-800/50 border border-gray-700 text-white">
+                                            <CardBody className="p-5">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {/* Cliente */}
+                                                    <div className="space-y-2">
+                                                        <label className="flex items-center gap-2 text-sm font-medium ">
+                                                            <FaUserTie className="text-blue-400" />
+                                                            Cliente *
+                                                        </label>
+                                                        <div className="flex gap-2">
+                                                            <Autocomplete
+                                                                name="idCliente"
+                                                                placeholder="Seleccionar cliente"
+                                                                selectedKey={formData.idCliente}
+                                                                // Cambiamos a 'items' para asegurar reactividad al crear uno nuevo
+                                                                items={catalogs.clientes}
+                                                                onSelectionChange={(e) => {
+                                                                    setFormData(prev => ({ ...prev, ["idCliente"]: e }));
+                                                                }}
+                                                                className="flex-grow"
+                                                                variant="bordered"
+                                                                classNames={{
+                                                                    base: "bg-gray-900/50",
+                                                                    listbox: "bg-gray-900",
+                                                                    popoverContent: "bg-gray-900"
+                                                                }}
+                                                                isRequired
+                                                            >
+                                                                {(cliente) => (
+                                                                    <AutocompleteItem
+                                                                        key={cliente.id}
+                                                                        value={cliente.nombre}
+                                                                        className="text-gray-300 hover:bg-gray-800"
+                                                                    >
+                                                                        {cliente.nombre}
+                                                                    </AutocompleteItem>
+                                                                )}
+                                                            </Autocomplete>
+
+                                                            {/* BOTÓN PERSONALIZADO PARA ABRIR MODAL
+                                                                Aquí usamos el estilo que tenías, pero controlamos la apertura manualmente.
+                                                            */}
+                                                            <Button
+                                                                onPress={onClientModalOpen}
+                                                                variant="bordered"
+                                                                isIconOnly
+                                                                className="bg-gray-900/50 border-gray-700 text-white"
+                                                                title="Registrar nuevo cliente"
+                                                            >
+                                                                <FaUserPlus size={18} />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Línea Cotizada */}
+                                                    <div className="space-y-2">
+                                                        <label className="flex items-center gap-2 text-sm font-medium text-white">
+                                                            <FaTag className="text-green-400" />
+                                                            Línea Cotizada *
+                                                        </label>
+                                                        <Select
+                                                            name="lineaCotizada"
+                                                            placeholder="Seleccionar línea"
+                                                            items={lineas}
+                                                            onChange={handleSelectChange}
+                                                            color="default"
                                                             isRequired
                                                         >
-                                                            {(cliente) => (
-                                                                <AutocompleteItem
-                                                                    key={cliente.id}
-                                                                    value={cliente.nombre}
-                                                                    className="text-gray-300 hover:bg-gray-800"
+                                                            {(linea) => (
+                                                                <SelectItem
+                                                                    key={linea.key}
+                                                                    textValue={linea.key}
+                                                                    className="text-gray-300"
                                                                 >
-                                                                    {cliente.nombre}
-                                                                </AutocompleteItem>
-                                                            )}
-                                                        </Autocomplete>
-                                                        <ClienteComponent
-                                                            type={"cliente"}
-                                                            fetchCatalogs={fetchCatalogs}
-                                                            variant="bordered"
-                                                            className="bg-gray-900/50"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                {/* Línea Cotizada */}
-                                                <div className="space-y-2">
-                                                    <label className="flex items-center gap-2 text-sm font-medium text-white">
-                                                        <FaTag className="text-green-400" />
-                                                        Línea Cotizada *
-                                                    </label>
-                                                    <Select
-                                                        name="lineaCotizada"
-                                                        placeholder="Seleccionar línea"
-                                                        items={lineas}
-                                                        onChange={handleSelectChange}
-                                                        color="default"
-
-                                                        isRequired
-                                                    >
-                                                        {(linea) => (
-                                                            <SelectItem
-                                                                key={linea.key}
-                                                                textValue={linea.key}
-                                                                className="text-gray-300"
-                                                            >
-                                                                <div className="flex items-center gap-2">
-                                                                    <Chip
-                                                                        size="sm"
-                                                                        color={linea.color}
-                                                                        variant="flat"
-                                                                    >
-                                                                        {linea.key}
-                                                                    </Chip>
-                                                                </div>
-                                                            </SelectItem>
-                                                        )}
-                                                    </Select>
-                                                </div>
-
-                                                {/* Tipo de Proyecto */}
-                                                <div className="space-y-2">
-                                                    <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                                                        <FaProjectDiagram className="text-purple-400" />
-                                                        Tipo de Proyecto *
-                                                    </label>
-                                                    <Select
-                                                        name="idTipoproyecto"
-                                                        placeholder="Seleccionar tipo"
-                                                        items={catalogs.tiposProyecto}
-                                                        onChange={handleSelectChange}
-                                                        color="default"
-                                                        isRequired
-                                                    >
-                                                        {(tipo) => (
-                                                            <SelectItem key={tipo.id} className="text-gray-300">
-                                                                {tipo.nombre}
-                                                            </SelectItem>
-                                                        )}
-                                                    </Select>
-                                                </div>
-
-                                                {/* Nombre del Proyecto */}
-                                                <div className="space-y-2">
-                                                    <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                                                        <FaIndustry className="text-yellow-400" />
-                                                        Nombre del Proyecto
-                                                        <span className="text-xs text-gray-500">(opcional)</span>
-                                                    </label>
-                                                    <div className="relative">
-                                                        <Input
-                                                            placeholder="Ej: Proyecto Edificio Central"
-                                                            name="nombreProyecto"
-                                                            value={formData.nombreProyecto}
-                                                            onChange={(e) => {
-                                                                setFormData(prev => ({ ...prev, ["nombreProyecto"]: e.target.value }));
-                                                            }}
-                                                            variant="bordered"
-                                                            className="bg-gray-900/50"
-                                                            endContent={
-                                                                <div className="flex items-center">
-                                                                    <div
-                                                                        className="text-xs text-gray-500 cursor-help px-2"
-                                                                        title="Si se deja vacío, se generará un nombre automático"
-                                                                    >
-                                                                        Auto-generado
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Chip
+                                                                            size="sm"
+                                                                            color={linea.color}
+                                                                            variant="flat"
+                                                                        >
+                                                                            {linea.key}
+                                                                        </Chip>
                                                                     </div>
-                                                                </div>
-                                                            }
-                                                        />
+                                                                </SelectItem>
+                                                            )}
+                                                        </Select>
+                                                    </div>
+
+                                                    {/* Tipo de Proyecto */}
+                                                    <div className="space-y-2">
+                                                        <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
+                                                            <FaProjectDiagram className="text-purple-400" />
+                                                            Tipo de Proyecto *
+                                                        </label>
+                                                        <Select
+                                                            name="idTipoproyecto"
+                                                            placeholder="Seleccionar tipo"
+                                                            items={catalogs.tiposProyecto}
+                                                            onChange={handleSelectChange}
+                                                            color="default"
+                                                            isRequired
+                                                        >
+                                                            {(tipo) => (
+                                                                <SelectItem key={tipo.id} className="text-gray-300">
+                                                                    {tipo.nombre}
+                                                                </SelectItem>
+                                                            )}
+                                                        </Select>
+                                                    </div>
+
+                                                    {/* Nombre del Proyecto */}
+                                                    <div className="space-y-2">
+                                                        <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
+                                                            <FaIndustry className="text-yellow-400" />
+                                                            Nombre del Proyecto
+                                                            <span className="text-xs text-gray-500">(opcional)</span>
+                                                        </label>
+                                                        <div className="relative">
+                                                            <Input
+                                                                placeholder="Ej: Proyecto Edificio Central"
+                                                                name="nombreProyecto"
+                                                                value={formData.nombreProyecto}
+                                                                onChange={(e) => {
+                                                                    setFormData(prev => ({ ...prev, ["nombreProyecto"]: e.target.value }));
+                                                                }}
+                                                                variant="bordered"
+                                                                className="bg-gray-900/50"
+                                                                endContent={
+                                                                    <div className="flex items-center">
+                                                                        <div
+                                                                            className="text-xs text-gray-500 cursor-help px-2"
+                                                                            title="Si se deja vacío, se generará un nombre automático"
+                                                                        >
+                                                                            Auto-generado
+                                                                        </div>
+                                                                    </div>
+                                                                }
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </CardBody>
-                                    </Card>
+                                            </CardBody>
+                                        </Card>
 
-                                    {/* Sección 2: Responsables */}
-                                    <Card className="bg-gray-800/50 border border-gray-700">
-                                        <CardBody className="p-5">
-                                            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                                                <FaUserTie className="text-blue-400" />
-                                                Responsables
-                                            </h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {/* Vendedor */}
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium text-gray-300">
-                                                        Vendedor
-                                                    </label>
-                                                    <Select
-                                                        name="idUser"
-                                                        placeholder="Seleccionar vendedor"
-                                                        items={catalogs.usuarios}
-                                                        onChange={handleSelectChange}
-                                                        color="default"
-                                                    >
-                                                        {(usuario) => (
-                                                            <SelectItem key={usuario.id} className="text-gray-300">
-                                                                {usuario.fullname}
-                                                            </SelectItem>
-                                                        )}
-                                                    </Select>
-                                                </div>
-
-                                                {/* Agente */}
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium text-gray-300">
-                                                        Agente
-                                                    </label>
-                                                    <Select
-                                                        name="idAgente"
-                                                        placeholder="Seleccionar agente"
-                                                        items={catalogs.usuarios}
-                                                        onChange={handleSelectChange}
-                                                        color="default"
-                                                    >
-                                                        {(usuario) => (
-                                                            <SelectItem key={usuario.id} className="text-gray-300">
-                                                                {usuario.fullname}
-                                                            </SelectItem>
-                                                        )}
-                                                    </Select>
-                                                </div>
-                                            </div>
-                                        </CardBody>
-                                    </Card>
-
-                                    {/* Sección 3: Envío */}
-                                    <Card className="bg-gray-800/50 border border-gray-700">
-                                        <CardBody className="p-5">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                                                    <FaShippingFast className="text-green-400" />
-                                                    Método de Envío
+                                        {/* Sección 2: Responsables */}
+                                        <Card className="bg-gray-800/50 border border-gray-700">
+                                            <CardBody className="p-5">
+                                                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                                                    <FaUserTie className="text-blue-400" />
+                                                    Responsables
                                                 </h3>
-                                                <Chip size="sm" variant="flat" color="default">
-                                                    Opcional
-                                                </Chip>
-                                            </div>
-                                            <Select
-                                                name="id_envio"
-                                                placeholder="Seleccionar método de envío"
-                                                items={catalogs.envios}
-                                                onChange={handleSelectChange}
-                                                color="default"
-                                            >
-                                                {(envio) => (
-                                                    <SelectItem key={envio.id} className="text-gray-300">
-                                                        {envio.descripcion}
-                                                    </SelectItem>
-                                                )}
-                                            </Select>
-                                        </CardBody>
-                                    </Card>
-                                </div>
-                            )}
-                        </ModalBody>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {/* Vendedor */}
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-gray-300">
+                                                            Vendedor
+                                                        </label>
+                                                        <Select
+                                                            name="idUser"
+                                                            placeholder="Seleccionar vendedor"
+                                                            items={catalogs.usuarios}
+                                                            onChange={handleSelectChange}
+                                                            color="default"
+                                                        >
+                                                            {(usuario) => (
+                                                                <SelectItem key={usuario.id} className="text-gray-300">
+                                                                    {usuario.fullname}
+                                                                </SelectItem>
+                                                            )}
+                                                        </Select>
+                                                    </div>
 
-                        <ModalFooter className="border-t border-gray-800 pt-4">
-                            <Button
-                                color="danger"
-                                variant="light"
-                                onPress={onCloseCallback}
-                                className="font-medium"
-                            >
-                                Cancelar
-                            </Button>
-                            <Button
-                                color="primary"
-                                isLoading={isLoading}
-                                onPress={handleSubmit}
-                                className="font-medium bg-gradient-to-r from-blue-600 to-blue-700"
-                                startContent={!isLoading && <IoIosCreate />}
-                            >
-                                {isLoading ? "Creando..." : "Crear Cotización"}
-                            </Button>
-                        </ModalFooter>
-                    </>
-                )}
-            </ModalContent>
-        </Modal>
+                                                    {/* Agente */}
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium text-gray-300">
+                                                            Agente
+                                                        </label>
+                                                        <Select
+                                                            name="idAgente"
+                                                            placeholder="Seleccionar agente"
+                                                            items={catalogs.usuarios}
+                                                            onChange={handleSelectChange}
+                                                            color="default"
+                                                        >
+                                                            {(usuario) => (
+                                                                <SelectItem key={usuario.id} className="text-gray-300">
+                                                                    {usuario.fullname}
+                                                                </SelectItem>
+                                                            )}
+                                                        </Select>
+                                                    </div>
+                                                </div>
+                                            </CardBody>
+                                        </Card>
+
+                                        {/* Sección 3: Envío */}
+                                        <Card className="bg-gray-800/50 border border-gray-700">
+                                            <CardBody className="p-5">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                                        <FaShippingFast className="text-green-400" />
+                                                        Método de Envío
+                                                    </h3>
+                                                    <Chip size="sm" variant="flat" color="default">
+                                                        Opcional
+                                                    </Chip>
+                                                </div>
+                                                <Select
+                                                    name="id_envio"
+                                                    placeholder="Seleccionar método de envío"
+                                                    items={catalogs.envios}
+                                                    onChange={handleSelectChange}
+                                                    color="default"
+                                                >
+                                                    {(envio) => (
+                                                        <SelectItem key={envio.id} className="text-gray-300">
+                                                            {envio.descripcion}
+                                                        </SelectItem>
+                                                    )}
+                                                </Select>
+                                            </CardBody>
+                                        </Card>
+                                    </div>
+                                )}
+                            </ModalBody>
+
+                            <ModalFooter className="border-t border-gray-800 pt-4">
+                                <Button
+                                    color="danger"
+                                    variant="light"
+                                    onPress={onCloseCallback}
+                                    className="font-medium"
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    color="primary"
+                                    isLoading={isLoading}
+                                    onPress={handleSubmit}
+                                    className="font-medium bg-gradient-to-r from-blue-600 to-blue-700"
+                                    startContent={!isLoading && <IoIosCreate />}
+                                >
+                                    {isLoading ? "Creando..." : "Crear Cotización"}
+                                </Button>
+                            </ModalFooter>
+                        </>
+                    )}
+                </ModalContent>
+            </Modal>
+
+            <ClienteComponent
+                isOpenProp={isClientModalOpen}
+                onOpenChangeProp={onClientModalOpenChange}
+                refreshTable={fetchCatalogs}
+                type="new"
+            />
+        </>
     );
 }

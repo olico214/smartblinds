@@ -454,7 +454,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                             )}
 
                             {/* Fila 3: Margen y Botón */}
-                            <div className="md:col-span-4">
+                            {/* <div className="md:col-span-4">
                                 <Input
                                     label="Margen (%)"
                                     labelPlacement="outside"
@@ -465,7 +465,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                                     onValueChange={(v) => setNewProductForm(p => ({ ...p, margen: v }))}
                                     isRequired
                                 />
-                            </div>
+                            </div> */}
 
                             <div className="md:col-span-12 flex justify-start mt-2">
                                 <Button type="submit" color="primary" className="px-8 font-semibold">

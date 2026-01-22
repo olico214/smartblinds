@@ -4,27 +4,28 @@ import {
     Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
     Input, Chip, Pagination, Spinner, Tooltip, Button, useDisclosure
 } from "@nextui-org/react";
-import { PlusCircle, Search, Edit2 } from "lucide-react";
+import { Search, Edit2, PlusCircle } from "lucide-react"; // Asegúrate de tener PlusCircle importado
 import ClienteModal from "../registroCliente/registrarCliente";
-
 
 const columns = [
     { key: "nombre", label: "NOMBRE" },
     { key: "email", label: "EMAIL" },
     { key: "telefono", label: "TELÉFONO" },
-    { key: "selected_canal_venta", label: "CANAL ID" }, // Puedes ajustar esto si haces un JOIN en el backend para traer el nombre
+    { key: "selected_canal_venta", label: "CANAL ID" },
     { key: "frecuente", label: "FRECUENTE" },
     { key: "actions", label: "ACCIONES" },
 ];
 
 export default function ClientesTable() {
-    const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
     const [clientes, setClientes] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [filterValue, setFilterValue] = useState("");
-    const [selectedClient, setSelectedClient] = useState(null); // Estado para saber a quién editamos
+    const [selectedClient, setSelectedClient] = useState(null);
     const [page, setPage] = useState(1);
     const rowsPerPage = 10;
+
+    // CONTROL DEL MODAL DESDE EL PADRE
+    const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
     const fetchClientes = async () => {
         setIsLoading(true);
@@ -43,13 +44,13 @@ export default function ClientesTable() {
 
     // --- ACCIONES ---
     const handleCreateNew = () => {
-        setSelectedClient(null); // Limpiamos para indicar creación
-        onOpen();
+        setSelectedClient(null); // Modo Crear
+        onOpen(); // Abrimos el modal único
     };
 
     const handleEdit = (cliente) => {
-        setSelectedClient(cliente); // Cargamos el cliente a editar
-        onOpen();
+        setSelectedClient(cliente); // Modo Editar con datos
+        onOpen(); // Abrimos el modal único
     };
 
     // --- RENDERIZADO DE CELDAS ---
@@ -65,10 +66,11 @@ export default function ClientesTable() {
             case "actions":
                 return (
                     <div className="flex items-center gap-2">
-                        <Tooltip content="Editar">
-                            <Button isIconOnly variant="light" size="sm" onPress={() => handleEdit(cliente)}>
-                                <Edit2 size={18} className="text-default-500" />
-                            </Button>
+                        <Tooltip content="Editar usuario">
+                            {/* AQUI ESTA EL CAMBIO CLAVE: Un botón simple, no el Modal */}
+                            <span className="text-lg text-default-400 cursor-pointer active:opacity-50" onClick={() => handleEdit(cliente)}>
+                                <Edit2 size={20} />
+                            </span>
                         </Tooltip>
                     </div>
                 );
@@ -77,7 +79,7 @@ export default function ClientesTable() {
         }
     }, []);
 
-    // --- FILTRADO Y PAGINACIÓN ---
+    // --- FILTRADO Y PAGINACIÓN (Igual que antes) ---
     const filteredItems = useMemo(() => {
         if (!filterValue) return clientes;
         return clientes.filter(c =>
@@ -93,7 +95,7 @@ export default function ClientesTable() {
 
     return (
         <div className="space-y-4">
-            {/* BARRA SUPERIOR: BUSCADOR Y BOTÓN CREAR */}
+            {/* BARRA SUPERIOR */}
             <div className="flex justify-between items-center gap-4 bg-white p-4 rounded-lg shadow-sm">
                 <Input
                     isClearable
@@ -103,7 +105,9 @@ export default function ClientesTable() {
                     value={filterValue}
                     onValueChange={(val) => { setFilterValue(val); setPage(1); }}
                 />
-                <Button color="primary" onPress={handleCreateNew} startContent={<PlusCircle size={18} />}>
+
+                {/* Botón para CREAR (ahora usa la función del padre) */}
+                <Button color="primary" onPress={handleCreateNew} startContent={<PlusCircle size={20} />}>
                     Nuevo Cliente
                 </Button>
             </div>
@@ -129,14 +133,13 @@ export default function ClientesTable() {
                 </TableBody>
             </Table>
 
-            {/* EL MODAL (Formulario) */}
-            {/* Se renderiza aquí y se controla con isOpen */}
+            {/* MODAL ÚNICO AL FINAL DEL COMPONENTE */}
+            {/* Le pasamos el control (isOpen) y el cliente seleccionado */}
             <ClienteModal
-                isOpen={isOpen}
-                onClose={onClose}
-                onOpenChange={onOpenChange}
-                clientToEdit={selectedClient} // Pasamos el cliente seleccionado (o null)
-                refreshTable={fetchClientes}  // Pasamos la función para recargar la tabla
+                isOpenProp={isOpen}
+                onOpenChangeProp={onOpenChange}
+                clientToEdit={selectedClient}
+                refreshTable={fetchClientes}
             />
         </div>
     );
