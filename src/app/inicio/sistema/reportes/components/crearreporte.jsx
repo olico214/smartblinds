@@ -139,12 +139,12 @@ export default function DashboardReportes() {
                     </div>
 
                     {/* SWITCHER DE VISTA: DINERO O CANTIDAD */}
-                    <div className="flex justify-end mb-4">
+                    {/* <div className="flex justify-end mb-4">
                         <div className="bg-white border rounded-lg p-1 flex gap-1 shadow-sm">
                             <button onClick={() => setMetricView('monto')} className={`px-3 py-1 text-xs font-bold rounded transition-colors ${metricView === 'monto' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-50'}`}>Dinero ($)</button>
                             <button onClick={() => setMetricView('cantidad')} className={`px-3 py-1 text-xs font-bold rounded transition-colors ${metricView === 'cantidad' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-50'}`}>Cantidad (#)</button>
                         </div>
-                    </div>
+                    </div> */}
 
                     {/* FILA 1 DE GRÁFICOS: TIEMPO + AGENTES */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
