@@ -133,8 +133,7 @@ export default function ClientesTable() {
                 </TableBody>
             </Table>
 
-            {/* MODAL ÚNICO AL FINAL DEL COMPONENTE */}
-            {/* Le pasamos el control (isOpen) y el cliente seleccionado */}
+
             <ClienteModal
                 isOpenProp={isOpen}
                 onOpenChangeProp={onOpenChange}
