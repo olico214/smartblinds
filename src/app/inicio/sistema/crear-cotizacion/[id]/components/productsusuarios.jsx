@@ -51,6 +51,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
         alto: "",
         ancho: "",
         margen: "",
+        ajusteMargen: "0", // NUEVO CAMPO: Para guardar el incremento o decremento
         usarMargen: true,
         ubicacion: ""
     });
@@ -142,11 +143,8 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
         const subtotalListPrice = products.reduce((acc, item) => acc + (item.calculated?.subtotal || 0), 0);
 
         // --- MODIFICACIÓN: Cálculo global del descuento ---
-        // Calculamos el descuento basado en el total de la lista y el porcentaje global
         const descuentoPct = parseFloat(descuento) || 0;
         const totalDescuentos = subtotalListPrice * (descuentoPct / 100);
-
-        // Subtotal Neto: Es el precio de lista menos el descuento calculado arriba
         const subtotalNeto = subtotalListPrice - totalDescuentos;
         // --------------------------------------------------
 
@@ -162,9 +160,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
         const esPrecioManualValido = precioFinalNum > 0 && (!isAdmin && precioFinalNum >= minPrecioPermitido || isAdmin);
 
         // --- LÓGICA FINAL ---
-        // Si hay precio manual válido, úsalo. Si no, usa el 'subtotalNeto' (que ya tiene restado el descuento).
         const baseParaCalculo = esPrecioManualValido ? precioFinalNum : subtotalNeto;
-
         const montoIVA = baseParaCalculo * 0.16;
         const totalFinal = incluyeIVA ? baseParaCalculo + montoIVA : baseParaCalculo;
 
@@ -181,7 +177,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
             montoIVA,
             totalFinal
         };
-    }, [products, precioFinalManual, isAdmin, incluyeIVA, descuento]); // Importante: 'descuento' añadido a dependencias
+    }, [products, precioFinalManual, isAdmin, incluyeIVA, descuento]);
 
     // --- Handlers ---
     const handleAddProduct = (e) => {
@@ -191,6 +187,11 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
         // Ubicación solo si es Telas
         const ubicacionFinal = selectedProductInfo.tipo === 'Telas' ? newProductForm.ubicacion : "";
 
+        // MODIFICACIÓN: Calculamos el margen final sumando el informativo + el ajuste
+        const baseMargen = parseFloat(newProductForm.margen) || 0;
+        const ajusteMargen = parseFloat(newProductForm.ajusteMargen) || 0;
+        const margenFinal = baseMargen + ajusteMargen;
+
         const newProductData = {
             id: `local-${Date.now()}`,
             idProducto: newProductForm.idProducto,
@@ -198,7 +199,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
             alto: parseFloat(newProductForm.alto) || null,
             ancho: parseFloat(newProductForm.ancho) || null,
             actual_costo: parseFloat(selectedProductInfo.costo) || 0,
-            margen: newProductForm.margen,
+            margen: margenFinal, // Pasamos el margen ya ajustado para no romper tu matemática original
             ubicacion: ubicacionFinal,
             producto_nombre: selectedProductInfo.nombre,
             producto_tipo: selectedProductInfo.tipo,
@@ -210,6 +211,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                 : selectedProductInfo.tamano,
             sku: selectedProductInfo.sku
         };
+
         const updatedList = recalculateAllProducts([...products, newProductData]);
         setProducts(updatedList);
         setNewProductForm({
@@ -218,6 +220,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
             alto: "",
             ancho: "",
             margen: "",
+            ajusteMargen: "0",
             usarMargen: true,
             ubicacion: ""
         });
@@ -231,7 +234,6 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
 
 
     const handleSaveProducts = async () => {
-
         const result = await Swal.fire({
             title: '¿Guardar y Finalizar?',
             html: "Estás a punto de guardar los productos. <br>Una vez guardada, la lista quedará en modo de <b>solo lectura</b>.",
@@ -243,10 +245,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
             cancelButtonText: 'Cancelar'
         });
 
-
-
         if (result.isConfirmed) {
-
             const productsToSave = products.map(item => ({
                 idCotizacion: quoteId,
                 idproducto: item.idProducto,
@@ -273,51 +272,30 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
             const iva = incluyeIVA ? totals.montoIVA : 0;
 
             try {
-
                 const response = await fetch(`/api/cotizacion/${quoteId}/products`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-
                     body: JSON.stringify({ products: productsToSave, precioNormal, precioReal, iva, descuento, toleracion }),
-
                 });
 
                 if (!response.ok) throw new Error('Error al guardar los productos');
 
-
-
                 Swal.fire({
-
                     title: '¡Cotización Creada!',
-
                     text: "¿Qué te gustaría hacer ahora?",
-
                     icon: 'success',
-
                     showDenyButton: true,
-
                     confirmButtonText: 'Ver Detalles',
-
                     denyButtonText: 'Crear Nueva Cotización',
-
                 }).then((result) => {
-
                     if (result.isConfirmed) route.push(`/inicio/sistema/${quoteId}`);
-
                     else if (result.isDenied) route.push('/inicio/sistema/crear-cotizacion');
-
                 });
-
             } catch (error) {
-
                 console.error("Error en handleSaveProducts:", error);
-
                 Swal.fire('Error', 'Hubo un problema al guardar los productos.', 'error');
-
             }
-
         }
-
     };
 
     const canAddProducts = quoteStatus !== 'Finalizado' && quoteStatus !== 'Cancelado';
@@ -350,6 +328,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                                             alto: '',
                                             ancho: '',
                                             margen: selected?.margen || '25.00',
+                                            ajusteMargen: '0', // Reset del ajuste al cambiar producto
                                             ubicacion: ''
                                         }));
                                     }}
@@ -395,22 +374,20 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                                 )}
                             </div>
 
-                            <div className="md:col-span-2">
+                            {/* <div className="md:col-span-2">
                                 {selectedProductInfo?.tipo === 'Telas' && (
                                     <Input
-                                        label="Incremento por Ancho Persiana"
+                                        label="Incremento por Ancho"
                                         labelPlacement="outside"
                                         type="number"
                                         value={adicionaltuboAncho}
                                         onChange={(e) => setAdicionaltuboAncho(e.target.value)}
-                                        isRequired
+                                        isReadOnly
                                     />
                                 )}
-                            </div>
+                            </div> */}
 
-
-
-                            {/* Fila 2: Ancho y Alto, Ubicación (Todo Solo para Telas) */}
+                            {/* Fila 2: Ancho y Alto, Ubicación */}
                             {selectedProductInfo?.tipo === 'Telas' && (
                                 <>
                                     <div className="md:col-span-6">
@@ -438,7 +415,6 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                                         />
                                     </div>
 
-                                    {/* Ubicación exclusiva para Telas */}
                                     <div className="md:col-span-12">
                                         <Textarea
                                             label="Ubicación"
@@ -454,18 +430,32 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                             )}
 
                             {/* Fila 3: Margen y Botón */}
-                            {/* <div className="md:col-span-4">
+                            {/* <div className="md:col-span-3">
                                 <Input
-                                    label="Margen (%)"
+                                    label="Margen Base (%)"
                                     labelPlacement="outside"
                                     type="number"
                                     step="0.01"
                                     placeholder="0.00"
                                     value={newProductForm.margen}
-                                    onValueChange={(v) => setNewProductForm(p => ({ ...p, margen: v }))}
-                                    isRequired
+                                    isReadOnly // Esto lo hace 100% informativo
+                                    className="opacity-70" // Opacidad sutil para dar feedback visual de que no es editable
                                 />
                             </div> */}
+
+                            <div className="md:col-span-3">
+                                <Input
+                                    label="Ajuste Margen (+/- %)"
+                                    labelPlacement="outside"
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="0"
+                                    description="Ej: 5 para sumar, -5 para restar"
+                                    value={newProductForm.ajusteMargen}
+                                    onValueChange={(v) => setNewProductForm(p => ({ ...p, ajusteMargen: v }))}
+                                    isRequired
+                                />
+                            </div>
 
                             <div className="md:col-span-12 flex justify-start mt-2">
                                 <Button type="submit" color="primary" className="px-8 font-semibold">
@@ -509,13 +499,11 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
 
                                     <div className="flex justify-between items-center text-sm text-red-500">
                                         <span>- Descuentos</span>
-                                        {/* Usamos el valor calculado en useMemo */}
                                         <span className="font-bold">-${totals.totalDescuentos.toFixed(2)}</span>
                                     </div>
 
                                     <div className="flex justify-between items-center text-sm border-t border-dashed border-gray-300 pt-2">
                                         <span className="font-bold text-gray-700">Subtotal Neto</span>
-                                        {/* Usamos el valor calculado en useMemo (Lista - Descuento) */}
                                         <span className="font-bold text-gray-900">${totals.subtotalNeto.toFixed(2)}</span>
                                     </div>
 
@@ -579,13 +567,13 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                                     <TableCell>{item.newMedidas}</TableCell>
                                     <TableCell><div className="max-w-[150px] truncate" title={item.description}>{item.description}</div></TableCell>
                                     <TableCell>{item.cantidad}</TableCell>
-                                    {/* <TableCell>${(item.calculated?.costoBase || 0).toFixed(2)}</TableCell>
-                                    <TableCell className="text-blue-600 text-[10px]">+${(item.calculated?.proteccion || 0).toFixed(2)}</TableCell>
-                                    <TableCell className="text-blue-600 text-[10px]">+${(item.calculated?.instalacion || 0).toFixed(2)}</TableCell>
-                                    <TableCell className="text-purple-600 text-[10px]">+${(item.calculated?.margen || 0).toFixed(2)}</TableCell>
-                                    <TableCell className="text-red-500 text-[10px]">+${(item.calculated?.descuento || 0).toFixed(2)}</TableCell>
-                                    <TableCell className="text-red-500 text-[10px]">+${(item.calculated?.comisionAgente || 0).toFixed(2)}</TableCell>
-                                    <TableCell className="text-red-500 text-[10px]">+${(item.calculated?.comisionVendedor || 0).toFixed(2)}</TableCell> */}
+                                    {/* <TableCell>${(item.calculated?.costoBase || 0).toFixed(2)}</TableCell> */}
+                                    {/* <TableCell className="text-blue-600 text-[10px]">+${(item.calculated?.proteccion || 0).toFixed(2)}</TableCell> */}
+                                    {/* <TableCell className="text-blue-600 text-[10px]">+${(item.calculated?.instalacion || 0).toFixed(2)}</TableCell> */}
+                                    {/* <TableCell className="text-purple-600 text-[10px]">+${(item.calculated?.margen || 0).toFixed(2)}</TableCell> */}
+                                    {/* <TableCell className="text-red-500 text-[10px]">+${(item.calculated?.descuento || 0).toFixed(2)}</TableCell> */}
+                                    {/* <TableCell className="text-red-500 text-[10px]">+${(item.calculated?.comisionAgente || 0).toFixed(2)}</TableCell> */}
+                                    {/* <TableCell className="text-red-500 text-[10px]">+${(item.calculated?.comisionVendedor || 0).toFixed(2)}</TableCell> */}
                                     <TableCell className="font-bold bg-gray-50">${(item.calculated?.precioPieza || 0).toFixed(2)}</TableCell>
                                     <TableCell className="font-black text-gray-800">${(item.calculated?.subtotal || 0).toFixed(2)}</TableCell>
                                     <TableCell>
