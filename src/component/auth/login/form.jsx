@@ -118,28 +118,7 @@ export default function FormLogin() {
         />
       </motion.div>
 
-      {/* Opciones adicionales */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="flex justify-between items-center"
-      >
-        <label className="flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
-          />
-          <span className="ml-2 text-sm text-gray-600">Recordar sesión</span>
-        </label>
 
-        <a
-          href="#"
-          className="text-sm text-purple-600 hover:text-purple-700 font-medium transition-colors"
-        >
-          ¿Olvidaste tu contraseña?
-        </a>
-      </motion.div>
 
       {/* Botón de envío */}
       <motion.div
