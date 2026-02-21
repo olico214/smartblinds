@@ -45,13 +45,16 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
 
     const [adicionaltuboAncho, setAdicionaltuboAncho] = useState(280)
 
+    // --- NUEVO ESTADO: Ajuste Global ---
+    const [ajusteGlobal, setAjusteGlobal] = useState("");
+
     const [newProductForm, setNewProductForm] = useState({
         idProducto: "",
         cantidad: 1,
         alto: "",
         ancho: "",
         margen: "",
-        ajusteMargen: "0", // NUEVO CAMPO: Para guardar el incremento o decremento
+        ajusteMargen: "0",
         usarMargen: true,
         ubicacion: ""
     });
@@ -91,12 +94,10 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                 ? ((parseFloat(item.alto) < 1 ? 1 : (parseFloat(item.alto) * parseFloat(item.ancho) < 1 ? 1 : parseFloat(item.alto) * parseFloat(item.ancho))) * (costomsquare || 0)) * item.cantidad
                 : (item.actual_costo || 0) * item.cantidad;
 
-
             let proteccionMonto = (item.producto_tipo === 'Telas') ? costoBaseProducto * ((parseFloat(proteccion) / 100) || 0) : 0;
             const instalacionMonto = (item.producto_tipo === 'Telas') ? costoInstalacionUnificado * item.cantidad : 0;
             const costoTotal = costoBaseProducto + proteccionMonto + instalacionMonto;
 
-            // Uso del margen configurado manualmente en el formulario o del producto
             let margenAplicar = parseFloat(item.margen) || 0;
             if (item.producto_tipo === 'Telas') {
                 margenAplicar = margenAplicar + parseFloat(porcentajeAumento);
@@ -109,12 +110,9 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
             const costomargenvendedor = costomargen + comdescuento + comisinAgente;
             const comisionvendedor = (costomargenvendedor / (1 - (parseFloat(comisionVendedor) / 100 || 0)) - costomargenvendedor);
 
-
             const subtotalLinea = parseFloat(costoBaseProducto) + parseFloat(proteccionMonto) + parseFloat(instalacionMonto) + parseFloat(precioConMargen) + parseFloat(comdescuento) + parseFloat(comisinAgente) + parseFloat(comisionvendedor);
 
-
             let finalSubtotal = subtotalLinea;
-
 
             return {
                 ...item,
@@ -142,11 +140,9 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
     const totals = useMemo(() => {
         const subtotalListPrice = products.reduce((acc, item) => acc + (item.calculated?.subtotal || 0), 0);
 
-        // --- MODIFICACIÓN: Cálculo global del descuento ---
         const descuentoPct = parseFloat(descuento) || 0;
         const totalDescuentos = subtotalListPrice * (descuentoPct / 100);
         const subtotalNeto = subtotalListPrice - totalDescuentos;
-        // --------------------------------------------------
 
         const totalProteccion = products.reduce((acc, item) => acc + (item.calculated?.proteccion || 0), 0);
         const totalInstalacion = products.reduce((acc, item) => acc + (item.calculated?.instalacion || 0), 0);
@@ -156,10 +152,8 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
         const precioFinalNum = parseFloat(precioFinalManual) || 0;
         const minPrecioPermitido = subtotalNeto * 0.90;
 
-        // Validación: Si el precio manual es válido, tiene prioridad.
         const esPrecioManualValido = precioFinalNum > 0 && (!isAdmin && precioFinalNum >= minPrecioPermitido || isAdmin);
 
-        // --- LÓGICA FINAL ---
         const baseParaCalculo = esPrecioManualValido ? precioFinalNum : subtotalNeto;
         const montoIVA = baseParaCalculo * 0.16;
         const totalFinal = incluyeIVA ? baseParaCalculo + montoIVA : baseParaCalculo;
@@ -184,10 +178,8 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
         e.preventDefault();
         if (!selectedProductInfo) return;
 
-        // Ubicación solo si es Telas
         const ubicacionFinal = selectedProductInfo.tipo === 'Telas' ? newProductForm.ubicacion : "";
 
-        // MODIFICACIÓN: Calculamos el margen final sumando el informativo + el ajuste
         const baseMargen = parseFloat(newProductForm.margen) || 0;
         const ajusteMargen = parseFloat(newProductForm.ajusteMargen) || 0;
         const margenFinal = baseMargen + ajusteMargen;
@@ -199,7 +191,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
             alto: parseFloat(newProductForm.alto) || null,
             ancho: parseFloat(newProductForm.ancho) || null,
             actual_costo: parseFloat(selectedProductInfo.costo) || 0,
-            margen: margenFinal, // Pasamos el margen ya ajustado para no romper tu matemática original
+            margen: margenFinal,
             ubicacion: ubicacionFinal,
             producto_nombre: selectedProductInfo.nombre,
             producto_tipo: selectedProductInfo.tipo,
@@ -232,6 +224,35 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
         setProducts(recalculateAllProducts(filteredList));
     };
 
+    // --- NUEVA FUNCIÓN: Actualizar Margen de Todos ---
+    const handleAplicarAjusteGlobal = () => {
+        const ajuste = parseFloat(ajusteGlobal);
+        if (isNaN(ajuste)) {
+            Swal.fire('Aviso', 'Ingresa un número válido para el ajuste', 'warning');
+            return;
+        }
+
+        // Mapeamos el arreglo sumando el ajuste al margen actual de cada producto
+        const updatedProducts = products.map(item => {
+            const nuevoMargen = parseFloat(item.margen) + ajuste;
+            return {
+                ...item,
+                margen: nuevoMargen
+            };
+        });
+
+        // Recalculamos todos los valores con el nuevo arreglo modificado
+        setProducts(recalculateAllProducts(updatedProducts));
+        setAjusteGlobal(""); // Limpiamos el input
+
+        Swal.fire({
+            title: 'Actualizado',
+            text: `Se aplicó un ajuste de ${ajuste > 0 ? '+' : ''}${ajuste}% al margen de todos los productos en la tabla.`,
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    };
 
     const handleSaveProducts = async () => {
         const result = await Swal.fire({
@@ -311,7 +332,6 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                     <CardBody className="py-4 px-4 overflow-visible">
                         <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-12 gap-4 align-bottom">
 
-                            {/* Fila 1: Producto, Cantidad, Tolerancia */}
                             <div className="md:col-span-6">
                                 <Autocomplete
                                     label="Producto"
@@ -328,7 +348,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                                             alto: '',
                                             ancho: '',
                                             margen: selected?.margen || '25.00',
-                                            ajusteMargen: '0', // Reset del ajuste al cambiar producto
+                                            ajusteMargen: '0',
                                             ubicacion: ''
                                         }));
                                     }}
@@ -382,12 +402,11 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                                         type="number"
                                         value={adicionaltuboAncho}
                                         onChange={(e) => setAdicionaltuboAncho(e.target.value)}
-                                        isReadOnly
+                                        isRequired
                                     />
                                 )}
                             </div> */}
 
-                            {/* Fila 2: Ancho y Alto, Ubicación */}
                             {selectedProductInfo?.tipo === 'Telas' && (
                                 <>
                                     <div className="md:col-span-6">
@@ -429,7 +448,6 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                                 </>
                             )}
 
-                            {/* Fila 3: Margen y Botón */}
                             {/* <div className="md:col-span-3">
                                 <Input
                                     label="Margen Base (%)"
@@ -438,8 +456,8 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                                     step="0.01"
                                     placeholder="0.00"
                                     value={newProductForm.margen}
-                                    isReadOnly // Esto lo hace 100% informativo
-                                    className="opacity-70" // Opacidad sutil para dar feedback visual de que no es editable
+                                    isReadOnly
+                                    className="opacity-70"
                                 />
                             </div> */}
 
@@ -462,8 +480,39 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                                     Añadir Producto
                                 </Button>
                             </div>
-
                         </form>
+                    </CardBody>
+                </Card>
+            )}
+
+            {/* Panel de Ajuste Global (Aparece si hay productos en la tabla) */}
+            {products.length > 0 && canAddProducts && (
+                <Card className="shadow-sm border border-primary-200 bg-primary-50">
+                    <CardBody className="py-3 px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div>
+                            <h4 className="font-bold text-primary-800 text-sm">Ajuste Global de Margen</h4>
+                            <p className="text-xs text-primary-600">Suma o resta margen a todos los productos actuales en la tabla simultáneamente.</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="Ej: 5 o -5"
+                                value={ajusteGlobal}
+                                onValueChange={setAjusteGlobal}
+                                size="sm"
+                                className="w-32"
+                                endContent={<span className="text-default-400 text-xs">%</span>}
+                            />
+                            <Button
+                                color="primary"
+                                size="sm"
+                                onPress={handleAplicarAjusteGlobal}
+                                isDisabled={!ajusteGlobal}
+                            >
+                                Aplicar a todos
+                            </Button>
+                        </div>
                     </CardBody>
                 </Card>
             )}
@@ -567,13 +616,17 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                                     <TableCell>{item.newMedidas}</TableCell>
                                     <TableCell><div className="max-w-[150px] truncate" title={item.description}>{item.description}</div></TableCell>
                                     <TableCell>{item.cantidad}</TableCell>
-                                    {/* <TableCell>${(item.calculated?.costoBase || 0).toFixed(2)}</TableCell> */}
-                                    {/* <TableCell className="text-blue-600 text-[10px]">+${(item.calculated?.proteccion || 0).toFixed(2)}</TableCell> */}
-                                    {/* <TableCell className="text-blue-600 text-[10px]">+${(item.calculated?.instalacion || 0).toFixed(2)}</TableCell> */}
-                                    {/* <TableCell className="text-purple-600 text-[10px]">+${(item.calculated?.margen || 0).toFixed(2)}</TableCell> */}
-                                    {/* <TableCell className="text-red-500 text-[10px]">+${(item.calculated?.descuento || 0).toFixed(2)}</TableCell> */}
-                                    {/* <TableCell className="text-red-500 text-[10px]">+${(item.calculated?.comisionAgente || 0).toFixed(2)}</TableCell> */}
-                                    {/* <TableCell className="text-red-500 text-[10px]">+${(item.calculated?.comisionVendedor || 0).toFixed(2)}</TableCell> */}
+                                    {/* <TableCell>${(item.calculated?.costoBase || 0).toFixed(2)}</TableCell>
+                                    <TableCell className="text-blue-600 text-[10px]">+${(item.calculated?.proteccion || 0).toFixed(2)}</TableCell>
+                                    <TableCell className="text-blue-600 text-[10px]">+${(item.calculated?.instalacion || 0).toFixed(2)}</TableCell>
+
+                                    <TableCell className="text-purple-600 text-[10px] font-bold">
+                                        {item.margen}% (+${(item.calculated?.margen || 0).toFixed(2)})
+                                    </TableCell>
+
+                                    <TableCell className="text-red-500 text-[10px]">+${(item.calculated?.descuento || 0).toFixed(2)}</TableCell>
+                                    <TableCell className="text-red-500 text-[10px]">+${(item.calculated?.comisionAgente || 0).toFixed(2)}</TableCell>
+                                    <TableCell className="text-red-500 text-[10px]">+${(item.calculated?.comisionVendedor || 0).toFixed(2)}</TableCell> */}
                                     <TableCell className="font-bold bg-gray-50">${(item.calculated?.precioPieza || 0).toFixed(2)}</TableCell>
                                     <TableCell className="font-black text-gray-800">${(item.calculated?.subtotal || 0).toFixed(2)}</TableCell>
                                     <TableCell>
