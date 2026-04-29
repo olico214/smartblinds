@@ -13,7 +13,10 @@ import {
     Chip,
     Pagination,
     Spinner,
-    Tooltip
+    Tooltip,
+    Select,
+    SelectItem,
+    Divider
 } from "@nextui-org/react";
 import RegisterProduct from "../register/registerProduct";
 import Swal from "sweetalert2";
@@ -43,14 +46,41 @@ const columns = [
     { key: "margen", label: "MARGEN" },
     { key: "precio", label: "PRECIO" },
     { key: "stockinicial", label: "STOCK" },
-    { key: "actions", label: "ACCIONES" }, // <--- Mantengo tu columna original
+    { key: "actions", label: "ACCIONES" },
+];
+
+// --- CONFIGURACIÓN DE CAMPOS FILTRABLES ---
+// Define todos los campos de la BD con su tipo de filtro y label
+const filterableFields = [
+    // Texto (búsqueda parcial)
+    { key: "nombre", label: "Nombre", type: "text" },
+    { key: "sku", label: "SKU", type: "text" },
+    { key: "descripcion", label: "Descripción", type: "text" },
+    { key: "tamano", label: "Tamaño", type: "text" },
+    { key: "medidas", label: "Medidas", type: "text" },
+    { key: "modeloSB", label: "Modelo SB", type: "text" },
+    { key: "colorSB", label: "Color SB", type: "text" },
+    { key: "modeloProveedor", label: "Modelo Proveedor", type: "text" },
+    { key: "colorProveedor", label: "Color Proveedor", type: "text" },
+    // Select (coincidencia exacta)
+    { key: "tipo", label: "Tipo", type: "select" },
+    { key: "is_automatizacion", label: "Automatización", type: "select" },
+    { key: "is_persiana", label: "Persiana", type: "select" },
+    // Rango numérico
+    { key: "costo", label: "Costo", type: "range" },
+    { key: "precio", label: "Precio", type: "range" },
+    { key: "margen", label: "Margen", type: "range" },
+    { key: "stockinicial", label: "Stock", type: "range" },
 ];
 
 export default function TableProducts() {
     const [products, setProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [filterValue, setFilterValue] = useState("");
-    const [typeFilter, setTypeFilter] = useState("all");
+
+    // --- ESTADO PARA FILTROS DINÁMICOS ---
+    // Cada filtro es un objeto: { field: 'nombre', value: 'texto' } o { field: 'costo', min: '10', max: '50' }
+    const [filters, setFilters] = useState([]);
+
     const [page, setPage] = useState(1);
     const rowsPerPage = 10;
 
@@ -59,6 +89,7 @@ export default function TableProducts() {
     const [nuevoMargen, setNuevoMargen] = useState("");
     const [isUpdating, setIsUpdating] = useState(false);
 
+    // --- FETCH ---
     const fetchProducts = async () => {
         setIsLoading(true);
         try {
@@ -80,18 +111,46 @@ export default function TableProducts() {
         fetchProducts();
     }, []);
 
+    // --- FILTRADO DINÁMICO EN EL CLIENTE ---
     const filteredItems = useMemo(() => {
         let filteredProducts = [...products];
-        if (filterValue) {
-            filteredProducts = filteredProducts.filter(product =>
-                product.nombre.toLowerCase().includes(filterValue.toLowerCase())
-            );
+
+        for (const filter of filters) {
+            const fieldConfig = filterableFields.find(f => f.key === filter.field);
+            if (!fieldConfig) continue;
+
+            if (fieldConfig.type === "text") {
+                // Búsqueda parcial case-insensitive
+                const searchValue = (filter.value || "").toLowerCase();
+                if (searchValue) {
+                    filteredProducts = filteredProducts.filter(product => {
+                        const fieldValue = (product[filter.field] || "").toString().toLowerCase();
+                        return fieldValue.includes(searchValue);
+                    });
+                }
+            } else if (fieldConfig.type === "select") {
+                const selectedValue = filter.value;
+                if (selectedValue && selectedValue !== "all") {
+                    filteredProducts = filteredProducts.filter(product => {
+                        return String(product[filter.field]) === selectedValue;
+                    });
+                }
+            } else if (fieldConfig.type === "range") {
+                const min = filter.min ? parseFloat(filter.min) : null;
+                const max = filter.max ? parseFloat(filter.max) : null;
+
+                filteredProducts = filteredProducts.filter(product => {
+                    const val = parseFloat(product[filter.field]);
+                    if (isNaN(val)) return false;
+                    if (min !== null && val < min) return false;
+                    if (max !== null && val > max) return false;
+                    return true;
+                });
+            }
         }
-        if (typeFilter !== "all") {
-            filteredProducts = filteredProducts.filter(product => product.tipo === typeFilter);
-        }
+
         return filteredProducts;
-    }, [products, filterValue, typeFilter]);
+    }, [products, filters]);
 
     const pages = Math.ceil(filteredItems.length / rowsPerPage) || 1;
 
@@ -101,20 +160,36 @@ export default function TableProducts() {
         return filteredItems.slice(start, end);
     }, [page, filteredItems]);
 
-    const onSearchChange = useCallback((value) => {
-        if (value) {
-            setFilterValue(value);
-            setPage(1);
-        } else {
-            setFilterValue("");
-        }
+    // --- FUNCIONES PARA MANEJAR FILTROS ---
+    const addFilter = useCallback((fieldKey) => {
+        // Evitar duplicados
+        if (filters.some(f => f.field === fieldKey)) return;
+        setFilters(prev => [...prev, { field: fieldKey, value: "", min: "", max: "" }]);
+        setPage(1);
+        setSelectedKeys(new Set([]));
+    }, [filters]);
+
+    const updateFilter = useCallback((fieldKey, updates) => {
+        setFilters(prev => prev.map(f =>
+            f.field === fieldKey ? { ...f, ...updates } : f
+        ));
+        setPage(1);
+        setSelectedKeys(new Set([]));
     }, []);
 
-    const onClear = useCallback(() => {
-        setFilterValue("");
+    const removeFilter = useCallback((fieldKey) => {
+        setFilters(prev => prev.filter(f => f.field !== fieldKey));
         setPage(1);
+        setSelectedKeys(new Set([]));
     }, []);
-    // --- LÓGICA DE ACTUALIZACIÓN MASIVA OPTIMIZADA ---
+
+    const clearAllFilters = useCallback(() => {
+        setFilters([]);
+        setPage(1);
+        setSelectedKeys(new Set([]));
+    }, []);
+
+    // --- LÓGICA DE ACTUALIZACIÓN MASIVA ---
     const handleUpdateMassiveMargin = async () => {
         const margenValue = parseFloat(nuevoMargen);
         if (isNaN(margenValue) || margenValue < 0 || margenValue >= 100) {
@@ -148,7 +223,6 @@ export default function TableProducts() {
 
         setIsUpdating(true);
 
-        // Armamos el "payload" (arreglo) con los nuevos datos a enviar al backend
         const payload = selectedProducts.map(product => {
             const cost = parseFloat(product.costo) || 0;
             let calculatedPrice = 0;
@@ -165,7 +239,6 @@ export default function TableProducts() {
         });
 
         try {
-            // Hacemos una SOLA petición a nuestra nueva API masiva
             const res = await fetch(`/api/productos/bulk`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -176,9 +249,9 @@ export default function TableProducts() {
 
             if (json.ok) {
                 Swal.fire("¡Éxito!", json.message, "success");
-                setSelectedKeys(new Set([])); // Limpiar selección
-                setNuevoMargen(""); // Limpiar input
-                fetchProducts(); // Recargar la tabla
+                setSelectedKeys(new Set([]));
+                setNuevoMargen("");
+                fetchProducts();
             } else {
                 throw new Error(json.message || "Error al actualizar en lote");
             }
@@ -190,7 +263,8 @@ export default function TableProducts() {
             setIsUpdating(false);
         }
     };
-    // --- RENDER DE CELDAS (Original + Formato) ---
+
+    // --- RENDER DE CELDAS ---
     const renderCell = useCallback((product, columnKey) => {
         const cellValue = product[columnKey];
 
@@ -206,8 +280,6 @@ export default function TableProducts() {
                 return cellValue ? `$${Number(cellValue).toFixed(2)}` : "$0.00";
             case "margen":
                 return cellValue ? `${cellValue}%` : "0%";
-
-            // --- AQUÍ MANTENEMOS TU BOTÓN DE EDICIÓN ---
             case "actions":
                 return (
                     <div className="relative flex items-center gap-2">
@@ -218,12 +290,6 @@ export default function TableProducts() {
                                 </Button>
                             </RegisterProduct>
                         </Tooltip>
-                        {/* El DeleteIcon está listo para cuando agregues su lógica */}
-                        {/* <Tooltip content="Eliminar producto" color="danger">
-                            <Button isIconOnly size="sm" variant="light" color="danger">
-                                <DeleteIcon />
-                            </Button>
-                        </Tooltip> */}
                     </div>
                 );
             default:
@@ -231,13 +297,108 @@ export default function TableProducts() {
         }
     }, [fetchProducts]);
 
+    // --- OBTENER VALORES ÚNICOS PARA CAMPOS SELECT ---
+    const getUniqueValues = useCallback((fieldKey) => {
+        const values = [...new Set(products.map(p => {
+            const val = p[fieldKey];
+            return val !== null && val !== undefined ? String(val) : null;
+        }).filter(Boolean))];
+        return values.sort();
+    }, [products]);
+
+    // --- RENDER DE UN FILTRO INDIVIDUAL ---
+    const renderFilter = (filter) => {
+        const fieldConfig = filterableFields.find(f => f.key === filter.field);
+        if (!fieldConfig) return null;
+
+        return (
+            <div key={filter.field} className="flex items-center gap-2 p-2 bg-content2 rounded-lg">
+                <span className="text-xs font-semibold text-default-500 whitespace-nowrap min-w-fit">
+                    {fieldConfig.label}:
+                </span>
+
+                {fieldConfig.type === "text" && (
+                    <Input
+                        size="sm"
+                        placeholder={`Buscar ${fieldConfig.label.toLowerCase()}...`}
+                        value={filter.value || ""}
+                        onValueChange={(val) => updateFilter(filter.field, { value: val })}
+                        isClearable
+                        onClear={() => removeFilter(filter.field)}
+                        className="min-w-[180px]"
+                    />
+                )}
+
+                {fieldConfig.type === "select" && (
+                    <div className="flex items-center gap-1">
+                        <Select
+                            size="sm"
+                            placeholder="Seleccionar..."
+                            selectedKeys={filter.value ? [filter.value] : []}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === "all" || !val) {
+                                    removeFilter(filter.field);
+                                } else {
+                                    updateFilter(filter.field, { value: val });
+                                }
+                            }}
+                            className="min-w-[160px]"
+                        >
+                            <SelectItem key="all" value="all">Todos</SelectItem>
+                            {getUniqueValues(filter.field).map(val => (
+                                <SelectItem key={val} value={val}>{val}</SelectItem>
+                            ))}
+                        </Select>
+                    </div>
+                )}
+
+                {fieldConfig.type === "range" && (
+                    <div className="flex items-center gap-1">
+                        <Input
+                            size="sm"
+                            type="number"
+                            placeholder="Mín"
+                            value={filter.min || ""}
+                            onValueChange={(val) => updateFilter(filter.field, { min: val })}
+                            className="w-24"
+                        />
+                        <span className="text-default-400">-</span>
+                        <Input
+                            size="sm"
+                            type="number"
+                            placeholder="Máx"
+                            value={filter.max || ""}
+                            onValueChange={(val) => updateFilter(filter.field, { max: val })}
+                            className="w-24"
+                        />
+                    </div>
+                )}
+
+                <Button
+                    isIconOnly
+                    size="sm"
+                    variant="light"
+                    color="danger"
+                    onPress={() => removeFilter(filter.field)}
+                >
+                    ✕
+                </Button>
+            </div>
+        );
+    };
+
+    // --- FILTROS DISPONIBLES (los que aún no están agregados) ---
+    const availableFields = filterableFields.filter(
+        f => !filters.some(ff => ff.field === f.key)
+    );
+
     const topContent = useMemo(() => {
-        const productTypes = ["all", ...new Set(products.map(p => p.tipo).filter(Boolean))];
         const countSelected = selectedKeys === "all" ? filteredItems.length : selectedKeys.size;
 
         return (
             <div className="flex flex-col gap-4">
-                {/* --- NUEVO PANEL DE EDICIÓN MASIVA (Se oculta si no hay nada seleccionado) --- */}
+                {/* --- PANEL DE EDICIÓN MASIVA --- */}
                 {countSelected > 0 && (
                     <div className="p-4 bg-primary-50 rounded-xl border border-primary-100 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
                         <div>
@@ -268,51 +429,74 @@ export default function TableProducts() {
                     </div>
                 )}
 
-                {/* --- TU BARRA ORIGINAL (Búsqueda y Botón "Nuevo Producto") --- */}
-                <div className="flex justify-between gap-3 items-end">
-                    <Input
-                        isClearable
-                        className="w-full sm:max-w-[44%]"
-                        placeholder="Buscar por nombre..."
-                        value={filterValue}
-                        onClear={onClear}
-                        onValueChange={onSearchChange}
-                    />
+                {/* --- BARRA DE ACCIONES PRINCIPAL --- */}
+                <div className="flex flex-col sm:flex-row justify-between gap-3 items-stretch sm:items-end">
+                    {/* --- SELECTOR PARA AGREGAR FILTROS DINÁMICOS --- */}
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Select
+                            size="sm"
+                            placeholder="+ Agregar filtro..."
+                            selectedKeys={[]}
+                            onChange={(e) => {
+                                if (e.target.value) addFilter(e.target.value);
+                            }}
+                            className="min-w-[200px]"
+                        >
+                            {availableFields.map(f => (
+                                <SelectItem key={f.key} value={f.key}>
+                                    {f.label}
+                                </SelectItem>
+                            ))}
+                        </Select>
+
+                        {filters.length > 0 && (
+                            <Button
+                                size="sm"
+                                variant="flat"
+                                color="danger"
+                                onPress={clearAllFilters}
+                            >
+                                Limpiar filtros
+                            </Button>
+                        )}
+                    </div>
+
                     <RegisterProduct fetchProducts={fetchProducts}>
                         <Button color="primary" className="font-semibold">Nuevo Producto</Button>
                     </RegisterProduct>
                 </div>
 
-                {/* --- TUS CHIPS DE FILTROS --- */}
-                <div className="flex justify-between items-center">
-                    <div className="flex gap-2 overflow-x-auto pb-2">
-                        {productTypes.map(type => (
-                            <Chip
-                                key={type}
-                                variant={typeFilter === type ? "solid" : "bordered"}
-                                color="primary"
-                                className="cursor-pointer"
-                                onClick={() => {
-                                    setTypeFilter(type);
-                                    setPage(1);
-                                    setSelectedKeys(new Set([])); // Limpia selección al cambiar de categoría
-                                }}
-                            >
-                                {type === "all" ? "Todos" : type}
-                            </Chip>
-                        ))}
+                {/* --- FILTROS ACTIVOS --- */}
+                {filters.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2">
+                        {filters.map(renderFilter)}
                     </div>
-                </div>
-                <span className="text-default-400 text-small">Total {products.length} productos</span>
+                )}
+
+                {/* --- CONTADOR DE PRODUCTOS --- */}
+                <span className="text-default-400 text-small">
+                    Total {products.length} productos • Mostrando {filteredItems.length} con los filtros aplicados
+                </span>
             </div>
         );
-    }, [filterValue, onSearchChange, products, typeFilter, onClear, fetchProducts, selectedKeys, filteredItems.length, nuevoMargen, isUpdating]);
+    }, [
+        filters,
+        products,
+        selectedKeys,
+        filteredItems.length,
+        nuevoMargen,
+        isUpdating,
+        availableFields,
+        addFilter,
+        clearAllFilters,
+        renderFilter
+    ]);
 
     return (
         <Table
-            aria-label="Tabla de productos con paginación, edición individual y actualización masiva"
-            selectionMode="multiple"      // <--- Habilita los checkboxes
-            selectedKeys={selectedKeys}   // <--- Controla qué filas están seleccionadas
+            aria-label="Tabla de productos con filtros dinámicos en todos los campos"
+            selectionMode="multiple"
+            selectedKeys={selectedKeys}
             onSelectionChange={setSelectedKeys}
             topContent={topContent}
             topContentPlacement="outside"
@@ -343,7 +527,6 @@ export default function TableProducts() {
                 emptyContent={"No se encontraron productos que coincidan con los filtros."}
             >
                 {(item) => (
-                    // Aseguramos de que el 'key' sea string, requisito de NextUI para selectedKeys
                     <TableRow key={item.id.toString()}>
                         {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
                     </TableRow>
