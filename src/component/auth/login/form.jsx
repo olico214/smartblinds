@@ -34,7 +34,7 @@ export default function FormLogin() {
       if (respuesta.ok) {
         toast.success("¡Bienvenido! Accediendo al sistema...");
         setTimeout(() => {
-          route.push("/inicio");
+          route.push("/inicio/sistema/crear-cotizacion");
         }, 1500);
       } else {
         toast.error("Credenciales incorrectas. Inténtalo de nuevo.");
@@ -131,7 +131,7 @@ export default function FormLogin() {
           color="primary"
           type="submit"
           isLoading={isLoading}
-          className="w-full bg-gradient-to-r from-blue-600 to-white text-black font-semibold text-lg py-7 rounded-xl hover:shadow-lg hover:shadow-purple-200 transition-all duration-300 hover:scale-[1.02]"
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold text-lg py-7 rounded-xl hover:shadow-lg hover:shadow-blue-200 transition-all duration-300 hover:scale-[1.02]"
           endContent={!isLoading && <FaArrowRight className="ml-2" />}
         >
           {isLoading ? "Verificando..." : "Iniciar Sesión"}

@@ -13,7 +13,7 @@ export default async function PerfilComponent() {
 
   return (
     <div>
-      <ModalEditview pages={pages} apps={apps} />
+      <ModalEditview apps={apps} />
       <DragPages pages={pages} apps={apps} />
     </div>
   );

@@ -1,8 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   DndContext,
-  closestCorners, // Usar closestCorners es mejor para listas verticales/mixtas
+  closestCorners,
   DragOverlay,
   useDroppable,
   KeyboardSensor,
@@ -21,6 +21,8 @@ import { CSS } from "@dnd-kit/utilities";
 import ModalEditview from "./modal";
 
 const STATUSES = ["Sistema", "Administracion"];
+// Prefijo para IDs de contenedores droppable para evitar conflicto con SortableContext
+const CONTAINER_PREFIX = "container-";
 
 export default function DragPages({ pages, apps }) {
   // Ordenamos inicialmente por la columna 'position' que viene de la BD
@@ -30,21 +32,29 @@ export default function DragPages({ pages, apps }) {
   const [activeId, setActiveId] = useState(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5, // Pequeña distancia para evitar drag accidental al hacer clic en editar
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
   // --- FUNCIÓN PARA GUARDAR EN BD ---
-  const saveOrder = async (newItems) => {
+  const saveOrder = useCallback(async (newItems) => {
     try {
-      // Enviamos el array completo o solo lo necesario (id, apps)
-      // El backend usará el índice del array como 'position'
+      // Enviamos solo id y apps (el backend usa el contador por columna como position)
+      const payload = newItems.map((item) => ({
+        id: item.id,
+        apps: item.apps,
+      }));
+
       const response = await fetch("/api/admin/paginas/orden", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newItems),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -55,7 +65,7 @@ export default function DragPages({ pages, apps }) {
       console.error(error);
       alert("Hubo un error al guardar el orden en la base de datos.");
     }
-  };
+  }, []);
 
   const findItem = (id) => items.find((item) => item.id === id);
 
@@ -70,46 +80,38 @@ export default function DragPages({ pages, apps }) {
     if (!overId || active.id === overId) return;
 
     const activeItem = findItem(active.id);
-    const overItem = findItem(overId);
-
     if (!activeItem) return;
 
-    // 1. Mover entre columnas (Sistema <-> Administracion)
+    const overItem = findItem(overId);
+    // Verificamos si el over es un contenedor (usando el prefijo)
+    const isOverContainer = typeof overId === "string" && overId.startsWith(CONTAINER_PREFIX);
+
+    if (isOverContainer) {
+      // Extraemos el nombre real de la columna
+      const containerName = overId.replace(CONTAINER_PREFIX, "");
+      if (activeItem.apps !== containerName) {
+        setItems((prev) => {
+          const activeIndex = prev.findIndex((i) => i.id === active.id);
+          const newItems = [...prev];
+          newItems[activeIndex] = { ...newItems[activeIndex], apps: containerName };
+          return newItems;
+        });
+      }
+      return;
+    }
+
+    // Si estamos sobre otro item y es de diferente columna
     if (overItem && activeItem.apps !== overItem.apps) {
       setItems((prev) => {
         const activeIndex = prev.findIndex((i) => i.id === active.id);
         const overIndex = prev.findIndex((i) => i.id === overId);
-        let newIndex;
-        if (overIndex >= 0) {
-          newIndex =
-            overIndex +
-            (active.rect.current.translated?.top >
-              over.rect.top + over.rect.height
-              ? 1
-              : 0);
-        } else {
-          newIndex = prev.length + 1;
-        }
-
         const newItems = [...prev];
-        // Actualizamos la propiedad 'apps' del item arrastrado
+        // Cambiamos la app del item activo a la del item sobre el que está
         newItems[activeIndex] = {
           ...newItems[activeIndex],
           apps: overItem.apps,
         };
-
-        return arrayMove(newItems, activeIndex, newIndex);
-      });
-    }
-
-    // 2. Mover a una columna vacía
-    const isOverContainer = STATUSES.includes(overId);
-    if (isOverContainer && activeItem.apps !== overId) {
-      setItems((prev) => {
-        const activeIndex = prev.findIndex((i) => i.id === active.id);
-        const newItems = [...prev];
-        newItems[activeIndex] = { ...newItems[activeIndex], apps: overId };
-        return arrayMove(newItems, activeIndex, activeIndex);
+        return arrayMove(newItems, activeIndex, overIndex);
       });
     }
   };
@@ -119,26 +121,36 @@ export default function DragPages({ pages, apps }) {
     const activeItem = findItem(active.id);
     const overItem = findItem(over?.id);
 
-    if (!activeItem || !overItem) {
+    if (!activeItem) {
       setActiveId(null);
       return;
     }
 
-    const activeIndex = items.findIndex((i) => i.id === active.id);
-    const overIndex = items.findIndex((i) => i.id === over.id);
-
-    let newItems = [...items];
-
-    // Si cambió de posición
-    if (activeIndex !== overIndex) {
-      newItems = arrayMove(items, activeIndex, overIndex);
-      setItems(newItems);
+    // Si soltamos sobre un contenedor (no sobre un item)
+    if (over && typeof over.id === "string" && over.id.startsWith(CONTAINER_PREFIX)) {
+      // Ya se manejó en handleDragOver, solo guardamos
+      saveOrder(items);
+      setActiveId(null);
+      return;
     }
 
-    // IMPORTANTE: Guardar en la BD al soltar
-    // Verificamos si hubo cambios reales antes de llamar a la API
-    // O simplemente llamamos siempre para asegurar sincronización
-    saveOrder(newItems);
+    // Si soltamos sobre otro item
+    if (overItem) {
+      const activeIndex = items.findIndex((i) => i.id === active.id);
+      const overIndex = items.findIndex((i) => i.id === over.id);
+
+      if (activeIndex !== overIndex) {
+        const newItems = arrayMove(items, activeIndex, overIndex);
+        setItems(newItems);
+        saveOrder(newItems);
+      } else {
+        // Mismo índice pero pudo haber cambio de columna en handleDragOver
+        saveOrder(items);
+      }
+    } else {
+      // Soltó fuera de cualquier zona válida, guardamos igual por si hubo cambios
+      saveOrder(items);
+    }
 
     setActiveId(null);
   };
@@ -174,11 +186,9 @@ export default function DragPages({ pages, apps }) {
   );
 }
 
-// ... (El resto de tus componentes StatusTable, SortableUser e ItemCard siguen igual que en la respuesta anterior)
-// Solo asegúrate de copiar el código de ItemCard y StatusTable que te di antes
-// para que el ID y el estilo funcionen bien.
 function StatusTable({ id, title, users, apps }) {
-  const { setNodeRef } = useDroppable({ id });
+  // Usamos un ID con prefijo para el droppable para evitar conflicto con SortableContext
+  const { setNodeRef } = useDroppable({ id: CONTAINER_PREFIX + id });
   return (
     <div
       ref={setNodeRef}

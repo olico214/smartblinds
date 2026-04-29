@@ -6,6 +6,7 @@ import {
     ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure,
     Divider, Chip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, DropdownSection
 } from "@nextui-org/react";
+import Swal from "sweetalert2";
 
 // --- Iconos ---
 const EditIcon = (props) => <svg {...props} aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>;
@@ -44,6 +45,21 @@ export default function CotizacionHeader({ cotizacion, catalogs, onUpdate, isAdm
 
     const handleStatusChange = async (newStatus) => {
         if (!newStatus || newStatus === cotizacion.estatus) return;
+
+        if (newStatus === 'Autorizar') {
+            const result = await Swal.fire({
+                title: '¿Autorizar Cotización?',
+                text: `Estás a punto de autorizar la cotización #${cotizacion.id} para ${cotizacion.cliente_nombre}. Una vez autorizada, no se podrán modificar los productos.`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#28a745',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, Autorizar',
+                cancelButtonText: 'Cancelar'
+            });
+            if (!result.isConfirmed) return;
+        }
+
         const updatedCotizacion = { ...cotizacion, estatus: newStatus };
         await fetch(`/api/cotizacion/${cotizacion.id}`, {
             method: 'PUT',
@@ -53,11 +69,12 @@ export default function CotizacionHeader({ cotizacion, catalogs, onUpdate, isAdm
         onUpdate();
     };
 
-    const canModify = cotizacion.estatus !== 'Autorizado' && cotizacion.estatus !== 'Cancelado';
+    const canModify = cotizacion.estatus !== 'Autorizado' && cotizacion.estatus !== 'Cancelado' && cotizacion.autorizado !== 1;
 
-    const estatuses = ["Cancelar"];
+    const estatuses = cotizacion.estatus === 'Finalizado' ? ["Autorizar", "Cancelar"] : ["Cancelar"];
     const statusColorMap = {
         Cancelar: "danger",
+        Autorizar: "success",
     };
 
     return (
@@ -70,6 +87,11 @@ export default function CotizacionHeader({ cotizacion, catalogs, onUpdate, isAdm
                     </div>
 
                     <div className="flex items-center gap-2">
+                        {cotizacion.autorizado == 1 && (
+                            <Chip color="success" size="sm" variant="solid">
+                                ✓ AUTORIZADO
+                            </Chip>
+                        )}
                         <Chip
                             color={statusColorMap[cotizacion.estatus]}
                             size="sm"
@@ -96,8 +118,8 @@ export default function CotizacionHeader({ cotizacion, catalogs, onUpdate, isAdm
                                 </DropdownSection>
                                 <DropdownSection title="Cambiar Estatus">
                                     {estatuses.map((status) => (
-                                        <DropdownItem key={status}>
-                                            {status}
+                                        <DropdownItem key={status} className={status === 'Autorizar' ? 'text-success-600 font-bold' : 'text-danger-600'}>
+                                            {status === 'Autorizar' ? '✓ Autorizar Cotización' : status}
                                         </DropdownItem>
                                     ))}
                                 </DropdownSection>

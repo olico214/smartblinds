@@ -1,8 +1,12 @@
 "use client"
-import { Card, CardHeader, CardBody, Divider, Chip, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@nextui-org/react";
+import { Card, CardHeader, CardBody, Divider, Chip, Button } from "@nextui-org/react";
+import { useState } from "react";
+import Swal from "sweetalert2";
 
 // --- Sub-componente para mostrar el encabezado ---
 export default function CotizacionHeaderView({ cotizacion, isAdmin }) {
+    const [autorizando, setAutorizando] = useState(false);
+
     const InfoBlock = ({ label, value }) => (
         <div>
             <p className="text-xs text-default-500 uppercase font-semibold">{label}</p>
@@ -15,7 +19,51 @@ export default function CotizacionHeaderView({ cotizacion, isAdmin }) {
         "En proceso": "primary",
         Nuevo: "secondary",
         Cancelado: "danger",
+        Finalizado: "warning",
     };
+
+    const handleAutorizar = async () => {
+        const result = await Swal.fire({
+            title: '¿Autorizar Cotización?',
+            text: `Estás a punto de autorizar la cotización #${cotizacion.id} para el cliente ${cotizacion.cliente_nombre}. Una vez autorizada, no se podrán modificar los productos.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sí, Autorizar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            setAutorizando(true);
+            try {
+                const res = await fetch(`/api/cotizacion/${cotizacion.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ estatus: 'Autorizar' }),
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    await Swal.fire({
+                        icon: 'success',
+                        title: '✅ ¡Cotización Autorizada!',
+                        text: 'La cotización ha sido autorizada exitosamente.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    window.location.reload();
+                } else {
+                    throw new Error(data.error || 'Error al autorizar');
+                }
+            } catch (error) {
+                Swal.fire('Error', error.message, 'error');
+            } finally {
+                setAutorizando(false);
+            }
+        }
+    };
+
+    const puedeAutorizar = cotizacion.estatus === 'Finalizado' && cotizacion.autorizado !== 1;
 
     return (
         <Card shadow="sm" className="border-1 border-default-200">
@@ -24,9 +72,16 @@ export default function CotizacionHeaderView({ cotizacion, isAdmin }) {
                     <h1 className="text-xl font-bold">Resumen de Cotización #{cotizacion.id}</h1>
                     <p className="text-sm text-default-500">Información guardada</p>
                 </div>
-                <Chip color={statusColorMap[cotizacion.estatus]} size="sm" variant="flat">
-                    {cotizacion.estatus}
-                </Chip>
+                <div className="flex items-center gap-2">
+                    {cotizacion.autorizado == 1 && (
+                        <Chip color="success" size="sm" variant="solid">
+                            ✓ AUTORIZADO
+                        </Chip>
+                    )}
+                    <Chip color={statusColorMap[cotizacion.estatus]} size="sm" variant="flat">
+                        {cotizacion.estatus}
+                    </Chip>
+                </div>
             </CardHeader>
             <Divider />
             <CardBody>
@@ -48,6 +103,21 @@ export default function CotizacionHeaderView({ cotizacion, isAdmin }) {
                         null
                     }
                 </div>
+
+                {/* Botón de Autorizar */}
+                {puedeAutorizar && (
+                    <div className="mt-6 pt-4 border-t border-default-200 flex justify-end">
+                        <Button
+                            color="success"
+                            size="lg"
+                            className="font-bold text-white shadow-md px-8"
+                            onPress={handleAutorizar}
+                            isLoading={autorizando}
+                        >
+                            {autorizando ? "Autorizando..." : "✓ Autorizar Cotización"}
+                        </Button>
+                    </div>
+                )}
             </CardBody>
         </Card>
     );

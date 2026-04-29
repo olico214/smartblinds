@@ -34,7 +34,7 @@ const SaveIcon = (props) => (
     </svg>
 );
 
-export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteStatus, initialProducts, productCatalog, onUpdate, descuento, comisionVendedor, comisionAgente, proteccion, isAdmin, aumentos }) {
+export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteStatus, quoteAutorizado, initialProducts, productCatalog, onUpdate, descuento, comisionVendedor, comisionAgente, proteccion, isAdmin, aumentos }) {
     const route = useRouter();
     const [products, setProducts] = useState([]);
     const [toleracion, setTolerancia] = useState(0.15)
@@ -319,7 +319,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
         }
     };
 
-    const canAddProducts = quoteStatus !== 'Finalizado' && quoteStatus !== 'Cancelado';
+    const canAddProducts = quoteStatus !== 'Finalizado' && quoteStatus !== 'Cancelado' && quoteAutorizado !== 1;
 
     return (
         <div className="space-y-4 font-sans">

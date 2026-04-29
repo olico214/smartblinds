@@ -49,7 +49,7 @@ const lineas = [
     { key: "Cortinas Premium", value: "Cortinas Premium", color: "primary" }
 ];
 
-export default function CotizacionForm({ isOpen, onClose, user }) {
+export default function CotizacionForm({ isOpen, onClose, user, preselectedClientId }) {
     const router = useRouter();
     const [formData, setFormData] = useState(initialFormState);
     const [catalogs, setCatalogs] = useState({ clientes: [], usuarios: [], tiposProyecto: [], envios: [] });
@@ -67,6 +67,13 @@ export default function CotizacionForm({ isOpen, onClose, user }) {
             fetchCatalogs();
         }
     }, [isOpen]);
+
+    // Pre-seleccionar cliente si se proporciona un ID
+    useEffect(() => {
+        if (preselectedClientId && catalogs.clientes.length > 0) {
+            setFormData(prev => ({ ...prev, idCliente: preselectedClientId }));
+        }
+    }, [preselectedClientId, catalogs.clientes]);
 
     const fetchCatalogs = async () => {
         if (catalogs.clientes.length === 0) setIsCatalogsLoading(true);

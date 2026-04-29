@@ -5,23 +5,24 @@ import pool from "@/libs/mysql-safe";
 export async function GET() {
     try {
         const query = `
-            SELECT 
+            SELECT
                 ov.id,
                 ov.estatus,
                 ov.createdDate,
+                ov.autorizado,
                 c.nombre AS cliente_nombre,
                 u.fullname AS usuario_nombre,
                 uAgent.fullname AS nombre_agente
-            FROM 
+            FROM
                 listado_ov AS ov
-            LEFT JOIN 
+            LEFT JOIN
                 clientes AS c ON ov.idCliente = c.id
-            LEFT JOIN 
+            LEFT JOIN
                 users_data AS u ON ov.idUser = u.id
-            LEFT JOIN 
+            LEFT JOIN
                 users_data AS uAgent ON ov.idAgente = uAgent.id
                 where ov.estatus!='Nuevo'
-            ORDER BY 
+            ORDER BY
                 ov.id DESC;
         `;
         const [result] = await pool.query(query);

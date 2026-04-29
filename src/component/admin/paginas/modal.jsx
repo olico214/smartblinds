@@ -12,21 +12,6 @@ import {
   SelectItem,
 } from "@nextui-org/react";
 import { useState } from "react";
-import {
-  FaBook,
-  FaBookOpen,
-  FaExchangeAlt,
-  FaExclamationTriangle,
-  FaFolder,
-  FaList,
-  FaMoneyBill,
-  FaPencilAlt,
-  FaPersonBooth,
-  FaListAlt,
-  FaChartPie,
-} from "react-icons/fa";
-import { FaPeopleRoof } from "react-icons/fa6";
-import { IoIosPerson, IoIosPeople } from "react-icons/io";
 import { toast } from "sonner";
 import { icons } from "@/libs/icons/icons";
 
@@ -48,11 +33,15 @@ export default function ModalEditview({ page, apps }) {
       setIcon(page.icon);
     } else {
       setId(0);
+      setNombre("");
+      setUrl("");
+      setIcon("");
+      setApp("");
     }
     onOpen();
   };
 
-  const handleSave = async () => {
+  const handleSave = async (onClose) => {
     const data = {
       nombre: nombre,
       url: url,
@@ -80,7 +69,16 @@ export default function ModalEditview({ page, apps }) {
     });
 
     if (response.ok) {
-      toast.success("pagina creada con exito");
+      toast.success(id === 0 ? "Página creada con éxito" : "Página actualizada con éxito", {
+        duration: 2000,
+      });
+      onClose();
+      // Recargar la página para reflejar los cambios
+      window.location.reload();
+    } else {
+      toast.error("Error al guardar la página", {
+        duration: 2000,
+      });
     }
   };
 
@@ -93,7 +91,9 @@ export default function ModalEditview({ page, apps }) {
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1">Editar</ModalHeader>
+              <ModalHeader className="flex flex-col gap-1">
+                {id === 0 ? "Nueva Página" : "Editar Página"}
+              </ModalHeader>
               <ModalBody>
                 <div className="grid grid-cols-4 gap-4 ">
                   <div>
@@ -160,7 +160,7 @@ export default function ModalEditview({ page, apps }) {
                 <Button color="danger" variant="light" onPress={onClose}>
                   Cerrar
                 </Button>
-                <Button color="primary" onPress={handleSave}>
+                <Button color="primary" onPress={() => handleSave(onClose)}>
                   Guardar
                 </Button>
               </ModalFooter>

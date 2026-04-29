@@ -1,56 +1,62 @@
 import { NextResponse } from "next/server";
 import pool from "@/libs/mysql-safe";
 
-// OBTENER la lista de cotizaciones con nombres de cliente y usuario
-export async function GET() {
+// OBTENER una cotización específica por ID
+export async function GET(req, { params }) {
     try {
+        const { id } = await params;
+
         const query = `
-            SELECT 
+            SELECT
                 ov.id,
                 ov.estatus,
                 ov.createdDate,
+                ov.autorizado,
+                ov.idCliente,
+                ov.idUser,
+                ov.idAgente,
+                ov.idTipoproyecto,
+                ov.id_envio,
+                ov.nombreProyecto,
+                ov.linea_cotizada,
+                ov.precioNormal,
+                ov.precioNormalconDescuento,
+                ov.precioReal,
+                ov.iva,
                 c.nombre AS cliente_nombre,
+                c.telefono AS cliente_telefono,
+                c.email AS cliente_email,
                 u.fullname AS usuario_nombre,
-                uAgent.fullname AS nombre_agente
-            FROM 
+                uAgent.fullname AS nombre_agente,
+                tp.nombre AS tipo_proyecto_nombre,
+                e.descripcion AS envio_descripcion,
+                e.precio AS envio_precio
+            FROM
                 listado_ov AS ov
-            LEFT JOIN 
+            LEFT JOIN
                 clientes AS c ON ov.idCliente = c.id
-            LEFT JOIN 
+            LEFT JOIN
                 users_data AS u ON ov.idUser = u.id
-            LEFT JOIN 
+            LEFT JOIN
                 users_data AS uAgent ON ov.idAgente = uAgent.id
-                where ov.estatus!='Nuevo'
-            ORDER BY 
-                ov.id DESC;
+            LEFT JOIN
+                tipo_proyecto tp ON ov.idTipoproyecto = tp.id
+            LEFT JOIN
+                envio e ON ov.id_envio = e.id
+            WHERE
+                ov.id = ?
         `;
-        const [result] = await pool.query(query);
-        return NextResponse.json({ ok: true, data: result });
-    } catch (error) {
-        return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-    }
-}
 
-// CREAR una nueva cotización (el encabezado)
-export async function POST(req) {
-    try {
-        const { idCliente, idUser, idTipoproyecto, id_envio, idAgente } = await req.json();
+        const [result] = await pool.query(query, [id]);
 
-        if (!idCliente || !idTipoproyecto) {
-            return NextResponse.json({ ok: false, error: "Cliente, usuario y tipo de proyecto son requeridos." }, { status: 400 });
+        if (result.length === 0) {
+            return NextResponse.json(
+                { ok: false, error: "Cotización no encontrada" },
+                { status: 404 }
+            );
         }
 
-        const query = `
-            INSERT INTO listado_ov (idCliente, idUser,idAgente, idTipoproyecto, id_envio, estatus, createdDate)
-            VALUES (?, ?,?,?, ?, 'Nuevo', NOW())
-        `;
-        const values = [idCliente, idUser, idAgente, idTipoproyecto, id_envio || null];
-
-        const [result] = await pool.query(query, values);
-
-        // Devolvemos el ID de la cotización recién creada, es crucial para la redirección
-        return NextResponse.json({ ok: true, id: result.insertId, message: "Cotización creada" });
-
+        return NextResponse.json({ ok: true, data: result[0] });
     } catch (error) {
         return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }

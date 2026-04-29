@@ -97,6 +97,7 @@ export default function CotizacionDetailPageComponent({ user }) {
                 <CotizacionProducts
                     quoteId={id}
                     quoteStatus={data.cotizacion.estatus}
+                    quoteAutorizado={data.cotizacion.autorizado}
                     initialProducts={data.productos}
                     productCatalog={catalogs.productos}
                     descuento={descuentoValor}
@@ -112,6 +113,7 @@ export default function CotizacionDetailPageComponent({ user }) {
                 <CotizacionProductsUsuarios
                     quoteId={id}
                     quoteStatus={data.cotizacion.estatus}
+                    quoteAutorizado={data.cotizacion.autorizado}
                     initialProducts={data.productos}
                     productCatalog={catalogs.productos}
                     descuento={descuentoValor}

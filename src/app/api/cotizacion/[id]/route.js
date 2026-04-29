@@ -90,17 +90,31 @@ export async function PUT(req, { params }) {
 
         const { id } = await params;
 
-        const { idCliente, idUser, idTipoproyecto, id_envio, estatus, idAgente } = await req.json();
+        const body = await req.json();
+        const { idCliente, idUser, idTipoproyecto, id_envio, estatus, idAgente, autorizado } = body;
 
-        const newStatus = estatus == "Cancelar" ? "Cancelado" : null
+        // Determinar si es solo un cambio de estatus (Autorizar/Cancelar)
+        const isOnlyStatusChange = Object.keys(body).length === 1 && body.estatus;
 
-        const query = `UPDATE listado_ov 
-        SET idCliente = ?, idUser = ?, idTipoproyecto = ?, id_envio = ?, estatus = ? ,idAgente=?
- WHERE id = ? `;
-
-        await pool.query(query, [idCliente, idUser, idTipoproyecto, id_envio, newStatus, idAgente, id]);
-
-
+        if (estatus === "Cancelar") {
+            // Solo cambiar estatus a Cancelado
+            const query = `UPDATE listado_ov SET estatus = ? WHERE id = ?`;
+            await pool.query(query, ["Cancelado", id]);
+        } else if (estatus === "Autorizar") {
+            // Solo cambiar estatus a Autorizado y autorizado = 1
+            const query = `UPDATE listado_ov SET estatus = ?, autorizado = 1 WHERE id = ?`;
+            await pool.query(query, ["Autorizado", id]);
+        } else if (isOnlyStatusChange) {
+            // Otro cambio de estatus (ej: "Finalizado" desde otro lugar)
+            const query = `UPDATE listado_ov SET estatus = ? WHERE id = ?`;
+            await pool.query(query, [estatus, id]);
+        } else {
+            // Actualización completa del encabezado (editar campos)
+            const query = `UPDATE listado_ov
+            SET idCliente = ?, idUser = ?, idTipoproyecto = ?, id_envio = ?, idAgente = ?
+     WHERE id = ? `;
+            await pool.query(query, [idCliente, idUser, idTipoproyecto, id_envio, idAgente, id]);
+        }
 
         return NextResponse.json({ ok: true, message: "Cotización actualizada" });
 
