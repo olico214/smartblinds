@@ -1,8 +1,9 @@
 "use client";
 import { Tabs, Tab, Card, CardBody } from "@nextui-org/react";
-import { FaWhatsapp, FaRobot } from "react-icons/fa";
+import { FaWhatsapp, FaRobot, FaCog } from "react-icons/fa";
 import WhatsappManager from "./components/WhatsappManager"; // Tu componente existente
 import MacroWhatsapp from "./components/MacroWhatsapp";
+import WhatsappInstancia from "./components/WhatsappInstancia";
 export default function RenderComponents({ urlinterna }) {
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -56,6 +57,23 @@ export default function RenderComponents({ urlinterna }) {
                         <Card className="mt-4 shadow-sm border border-gray-100 bg-gray-50/50">
                             <CardBody>
                                 <MacroWhatsapp urlinterna={urlinterna} />
+                            </CardBody>
+                        </Card>
+                    </Tab>
+
+                    {/* TAB 3: INSTANCIA (Control del bot) */}
+                    <Tab
+                        key="instancia"
+                        title={
+                            <div className="flex items-center space-x-2">
+                                <FaCog className="text-xl" />
+                                <span>Instancia</span>
+                            </div>
+                        }
+                    >
+                        <Card className="mt-4 shadow-sm border border-gray-100 bg-gray-50/50">
+                            <CardBody>
+                                <WhatsappInstancia />
                             </CardBody>
                         </Card>
                     </Tab>
