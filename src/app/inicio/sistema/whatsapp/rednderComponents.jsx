@@ -4,7 +4,7 @@ import { FaWhatsapp, FaRobot, FaCog } from "react-icons/fa";
 import WhatsappManager from "./components/WhatsappManager"; // Tu componente existente
 import MacroWhatsapp from "./components/MacroWhatsapp";
 import WhatsappInstancia from "./components/WhatsappInstancia";
-export default function RenderComponents({ urlinterna }) {
+export default function RenderComponents({ urlinterna, urlwhats }) {
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-6">
 
@@ -73,7 +73,7 @@ export default function RenderComponents({ urlinterna }) {
                     >
                         <Card className="mt-4 shadow-sm border border-gray-100 bg-gray-50/50">
                             <CardBody>
-                                <WhatsappInstancia />
+                                <WhatsappInstancia urlwhats={urlwhats} />
                             </CardBody>
                         </Card>
                     </Tab>

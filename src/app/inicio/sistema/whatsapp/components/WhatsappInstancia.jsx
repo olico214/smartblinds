@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardBody, Button, Input, Chip, Spinner, Divider } from "@nextui-org/react";
 import Swal from "sweetalert2";
-import { FaWhatsapp, FaStop, FaPlay, FaRedo, FaSync } from "react-icons/fa";
+import { FaWhatsapp, FaStop, FaPlay, FaRedo, FaSync, FaQrcode } from "react-icons/fa";
 
 const statusMap = {
     online: { label: "En línea", color: "success" },
@@ -21,7 +21,7 @@ function Info({ label, value }) {
     );
 }
 
-export default function WhatsappInstancia() {
+export default function WhatsappInstancia({ urlwhats }) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
@@ -155,6 +155,12 @@ export default function WhatsappInstancia() {
                         <Info label="Versión actual" value={data?.version || "—"} />
                     </div>
 
+                    {data?.versionFile && (
+                        <p className="text-xs text-default-400 break-all">
+                            Archivo de versión: <span className="font-mono">{data.versionFile}</span>
+                        </p>
+                    )}
+
                     <Divider />
 
                     <div className="flex flex-wrap gap-2">
@@ -170,6 +176,17 @@ export default function WhatsappInstancia() {
                         <Button variant="light" size="sm" startContent={<FaSync />} onPress={fetchStatus}>
                             Actualizar estado
                         </Button>
+                        {urlwhats && (
+                            <Button
+                                variant="flat"
+                                color="secondary"
+                                size="sm"
+                                startContent={<FaQrcode />}
+                                onPress={() => window.open(urlwhats, "_blank", "noopener,noreferrer")}
+                            >
+                                Ver QR / Consola
+                            </Button>
+                        )}
                     </div>
                 </CardBody>
             </Card>

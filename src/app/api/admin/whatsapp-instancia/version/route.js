@@ -3,11 +3,9 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import { writeFile } from "fs/promises";
 import { isAdmin } from "@/libs/usercontroller/checkAdmin";
+import { getPm2Name, getVersionFile } from "@/libs/whatsapp/instancia";
 
 const execAsync = promisify(exec);
-
-const PM2_NAME = () => process.env.WHATSAPP_PM2_NAME || "whatsapp";
-const VERSION_FILE = () => process.env.WHATSAPP_VERSION_FILE || "/root/whats/src/version.txt";
 
 export async function POST(req) {
     if (!(await isAdmin())) {
@@ -21,11 +19,15 @@ export async function POST(req) {
             { status: 400 }
         );
     }
+    const file = getVersionFile();
     try {
-        await writeFile(VERSION_FILE(), cleaned + "\n", "utf8");
-        await execAsync(`pm2 restart ${PM2_NAME()}`);
-        return NextResponse.json({ ok: true, version: cleaned });
+        await writeFile(file, cleaned + "\n", "utf8");
+        await execAsync(`pm2 restart ${getPm2Name()}`);
+        return NextResponse.json({ ok: true, version: cleaned, versionFile: file });
     } catch (e) {
-        return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
+        return NextResponse.json(
+            { ok: false, error: `No se pudo escribir ${file}: ${e.message}` },
+            { status: 500 }
+        );
     }
 }

@@ -3,15 +3,13 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import { readFile } from "fs/promises";
 import { isAdmin } from "@/libs/usercontroller/checkAdmin";
+import { getPm2Name, getVersionFile } from "@/libs/whatsapp/instancia";
 
 const execAsync = promisify(exec);
 
-const PM2_NAME = () => process.env.WHATSAPP_PM2_NAME || "whatsapp";
-const VERSION_FILE = () => process.env.WHATSAPP_VERSION_FILE || "/root/whats/src/version.txt";
-
 async function readVersion() {
     try {
-        return (await readFile(VERSION_FILE(), "utf8")).trim();
+        return (await readFile(getVersionFile(), "utf8")).trim();
     } catch {
         return null;
     }
@@ -21,7 +19,7 @@ async function getPm2Info() {
     try {
         const { stdout } = await execAsync("pm2 jlist");
         const list = JSON.parse(stdout);
-        const app = list.find((p) => p.name === PM2_NAME());
+        const app = list.find((p) => p.name === getPm2Name());
         if (!app) return null;
         return {
             status: app.pm2_env?.status ?? "unknown",
@@ -42,8 +40,9 @@ export async function GET() {
     const info = await getPm2Info();
     return NextResponse.json({
         ok: true,
-        name: PM2_NAME(),
+        name: getPm2Name(),
         version,
+        versionFile: getVersionFile(),
         ...(info || { status: "unknown", pid: null, restarts: 0, uptime: null }),
     });
 }
@@ -57,7 +56,7 @@ export async function POST(req) {
         return NextResponse.json({ ok: false, error: "Acción inválida" }, { status: 400 });
     }
     try {
-        await execAsync(`pm2 ${action} ${PM2_NAME()}`);
+        await execAsync(`pm2 ${action} ${getPm2Name()}`);
         return NextResponse.json({ ok: true, message: `Acción ${action} ejecutada` });
     } catch (e) {
         return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
