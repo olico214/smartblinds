@@ -36,7 +36,7 @@ export async function POST(req) {
     try {
         const authorization = req.headers.get("Authorization");
         const user = authorization.split(" ")[1];
-        const { idCliente, idUser, idTipoproyecto, id_envio, idAgente, nombreProyecto, lineaCotizada } = await req.json();
+        const { idCliente, idUser, idTipoproyecto, id_envio, idAgente, nombreProyecto, lineaCotizada, parent_id } = await req.json();
 
         if (!idCliente || !idTipoproyecto || !lineaCotizada) { // idUser también debería ser requerido
             return NextResponse.json({ ok: false, error: "Cliente, linea Cotizada y tipo de proyecto son requeridos." }, { status: 400 });
@@ -80,16 +80,48 @@ export async function POST(req) {
         }
 
         const query = `
-            INSERT INTO listado_ov (idCliente, idUser, idAgente, idTipoproyecto, id_envio, estatus, createdDate, nombreProyecto, linea_cotizada,createdBy)
-            VALUES (?, ?, ?, ?, ?, 'Nuevo', NOW(), ?, ?,?)
+            INSERT INTO listado_ov (idCliente, idUser, idAgente, idTipoproyecto, id_envio, estatus, createdDate, nombreProyecto, linea_cotizada,createdBy, parent_id)
+            VALUES (?, ?, ?, ?, ?, 'Nuevo', NOW(), ?, ?, ?, ?)
         `;
 
-        // CORREGIDO: Usar la variable 'finalNombreProyecto' que contiene el nombre correcto.
-        const values = [idCliente, idUser, idAgente, idTipoproyecto, id_envio || null, finalNombreProyecto, lineaCotizada, user];
+        const values = [idCliente, idUser, idAgente, idTipoproyecto, id_envio || null, finalNombreProyecto, lineaCotizada, user, parent_id || null];
 
         const [result] = await pool.query(query, values);
+        const newId = result.insertId;
 
-        return NextResponse.json({ ok: true, id: result.insertId, message: "Cotización creada" });
+        // --- Si es una cotización vinculada, copiamos los productos y los totales de la cotización padre ---
+        if (parent_id) {
+            // 1. Copiar todos los productos del padre a la nueva cotización
+            await pool.query(
+                `INSERT INTO products_ov (
+                    idCotizacion, idproducto, cantidad, costo_pieza, proteccion, instalacion,
+                    margen, pormargen, preciounico, preciototal, alto, ancho, ubicacion,
+                    comision_agente, comision_vendedor, descuento, medidas, description
+                )
+                SELECT ?, idproducto, cantidad, costo_pieza, proteccion, instalacion,
+                    margen, pormargen, preciounico, preciototal, alto, ancho, ubicacion,
+                    comision_agente, comision_vendedor, descuento, medidas, description
+                FROM products_ov WHERE idCotizacion = ?`,
+                [newId, parent_id]
+            );
+
+            // 2. Copiar los totales / valores de precio del encabezado del padre
+            await pool.query(
+                `UPDATE listado_ov AS nuevo
+                 JOIN listado_ov AS padre ON padre.id = ?
+                 SET
+                    nuevo.iva = padre.iva,
+                    nuevo.precioNormal = padre.precioNormal,
+                    nuevo.precioNormalconDescuento = padre.precioNormalconDescuento,
+                    nuevo.precioReal = padre.precioReal,
+                    nuevo.descuento = padre.descuento,
+                    nuevo.tolerancia = padre.tolerancia
+                 WHERE nuevo.id = ?`,
+                [parent_id, newId]
+            );
+        }
+
+        return NextResponse.json({ ok: true, id: newId, message: "Cotización creada" });
 
     } catch (error) {
         console.error("Error al crear cotización:", error); // Es buena práctica loguear el error en el servidor

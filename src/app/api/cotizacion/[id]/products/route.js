@@ -8,13 +8,19 @@ export async function POST(req, { params }) {
     try {
         const { id } = await params;
         const body = await req.json();
-        const { products, precioNormal, precioReal, iva, descuento, toleracion } = body;
+        const { products, precioNormal, precioReal, iva, descuento, toleracion, user } = body;
         console.log(body)
         // 1. Validar estatus antes de hacer cualquier cambio
-        const [cotizacion] = await connection.query("SELECT estatus FROM listado_ov WHERE id = ?", [id]);
+        const [cotizacion] = await connection.query("SELECT estatus, autorizado FROM listado_ov WHERE id = ?", [id]);
         const estatusActual = cotizacion[0]?.estatus;
 
-        if (estatusActual === 'Autorizado' || estatusActual === 'Cancelado') {
+        if ((estatusActual === 'Autorizado' || estatusActual === 'Cancelado') && user) {
+            const [adminCheck] = await connection.query("SELECT externo FROM users WHERE userID = ?", [user]);
+            const esAdmin = adminCheck.length > 0 && adminCheck[0].externo;
+            if (!esAdmin) {
+                return NextResponse.json({ message: "No se pueden modificar los productos de una cotización autorizada o cancelada." }, { status: 403 });
+            }
+        } else if (estatusActual === 'Autorizado' || estatusActual === 'Cancelado') {
             return NextResponse.json({ message: "No se pueden modificar los productos de una cotización autorizada o cancelada." }, { status: 403 });
         }
 
@@ -64,10 +70,15 @@ export async function POST(req, { params }) {
         await connection.query(query, [values]);
 
 
-        const precioconDescuento = precioNormal - (precioNormal * (descuento * 0.01));
+        const descuentoClamp = Math.min(parseFloat(descuento) || 0, 99.9);
+        const precioconDescuento = Math.max(precioNormal - (precioNormal * (descuentoClamp * 0.01)), 0);
+        const precioNormalSafe = Math.max(parseFloat(precioNormal) || 0, 0);
+        const precioRealSafe = Math.max(parseFloat(precioReal) || 0, 0);
+        const ivaSafe = Math.max(parseFloat(iva) || 0, 0);
 
+        const estatusGuardar = estatusActual === 'Autorizado' || estatusActual === 'Cancelado' ? estatusActual : 'Finalizado';
         const updatequery = `UPDATE listado_ov SET  estatus = ?,iva=?,precioNormal=?,precioReal=?,precioNormalconDescuento =?,descuento=?,tolerancia=? WHERE id = ? `;
-        await pool.query(updatequery, ['Finalizado', iva, precioNormal, precioReal, precioconDescuento, descuento, toleracion, id]);
+        await pool.query(updatequery, [estatusGuardar, ivaSafe, precioNormalSafe, precioRealSafe, precioconDescuento, descuentoClamp, toleracion, id]);
 
 
 

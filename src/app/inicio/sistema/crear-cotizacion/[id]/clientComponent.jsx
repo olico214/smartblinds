@@ -6,6 +6,7 @@ import { Spinner } from "@nextui-org/react";
 import CotizacionHeader from "./components/header";
 import CotizacionProducts from "./components/products";
 import CotizacionProductsUsuarios from "./components/productsusuarios";
+import CotizacionChainDrawer from "@/component/cotizacionChainDrawer/chainDrawer";
 
 export default function CotizacionDetailPageComponent({ user }) {
     const { id } = useParams();
@@ -108,6 +109,7 @@ export default function CotizacionDetailPageComponent({ user }) {
                     isAdmin={isAdmin}
                     preciosInstalacion={instalacion}
                     aumentos={aumentos}
+                    user={user}
                 />
                 :
                 <CotizacionProductsUsuarios
@@ -124,8 +126,11 @@ export default function CotizacionDetailPageComponent({ user }) {
                     isAdmin={isAdmin}
                     preciosInstalacion={instalacion}
                     aumentos={aumentos}
+                    user={user}
                 />
             }
+
+            <CotizacionChainDrawer currentId={id} viewMode="edit" user={user} parentData={data.cotizacion} isAdmin={isAdmin} />
         </div>
     );
 }

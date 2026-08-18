@@ -124,6 +124,12 @@ export default function DashboardSmartBlinds() {
                         <List size={15} /> Cotizaciones
                     </Link>
                     <Link
+                        href="/inicio/sistema/ventas"
+                        className="px-4 py-2.5 bg-white border border-green-200 rounded-xl hover:bg-green-50 hover:border-green-300 hover:text-green-600 transition-all text-sm font-medium text-slate-600 flex items-center gap-2 shadow-sm"
+                    >
+                        <ShoppingCart size={15} /> Ventas
+                    </Link>
+                    <Link
                         href="/inicio/sistema/crear-cotizacion"
                         className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-emerald-300 hover:text-emerald-600 transition-all text-sm font-medium text-slate-600 flex items-center gap-2 shadow-sm"
                     >
@@ -167,7 +173,8 @@ export default function DashboardSmartBlinds() {
                 </div>
 
                 {/* Card: Aprobadas */}
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-md hover:border-green-100 transition-all duration-300 group">
+                <Link href="/inicio/sistema/ventas" className="block">
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-md hover:border-green-100 transition-all duration-300 group cursor-pointer">
                     <div className="flex items-start justify-between mb-3">
                         <div className="p-2.5 rounded-xl bg-green-50 text-green-600 group-hover:bg-green-100 transition-colors">
                             <CheckCircle size={20} />
@@ -177,11 +184,12 @@ export default function DashboardSmartBlinds() {
                         </span>
                     </div>
                     <h3 className="text-2xl font-bold text-slate-800">{formatNumber(totales.total_aprobadas)}</h3>
-                    <p className="text-xs text-slate-400 font-medium mt-1 uppercase tracking-wider">Aprobadas</p>
+                    <p className="text-xs text-slate-400 font-medium mt-1 uppercase tracking-wider">Aprobadas (Ventas)</p>
                     <p className="text-[11px] text-green-600 mt-1.5 font-medium">
                         {formatMoney(totales.ventas_aprobadas)} en ventas
                     </p>
                 </div>
+                </Link>
 
                 {/* Card: Diferencia Cotizado vs Aprobado */}
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-md hover:border-amber-100 transition-all duration-300 group">
@@ -379,7 +387,7 @@ export default function DashboardSmartBlinds() {
                             return (
                                 <Link
                                     key={item.id}
-                                    href={`/inicio/sistema/${item.id}`}
+                                    href={item.autorizado == 1 ? `/inicio/sistema/ventas/${item.id}` : `/inicio/sistema/${item.id}`}
                                     className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-all group border border-transparent hover:border-slate-200"
                                 >
                                     <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center text-xs font-bold text-blue-600 shrink-0">

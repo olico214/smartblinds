@@ -34,7 +34,7 @@ const SaveIcon = (props) => (
     </svg>
 );
 
-export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteStatus, quoteAutorizado, initialProducts, productCatalog, onUpdate, descuento, comisionVendedor, comisionAgente, proteccion, isAdmin, aumentos }) {
+export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteStatus, quoteAutorizado, initialProducts, productCatalog, onUpdate, descuento, comisionVendedor, comisionAgente, proteccion, isAdmin, aumentos, user }) {
     const route = useRouter();
     const [products, setProducts] = useState([]);
     const [toleracion, setTolerancia] = useState(0.15)
@@ -98,17 +98,25 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
             const instalacionMonto = (item.producto_tipo === 'Telas') ? costoInstalacionUnificado * item.cantidad : 0;
             const costoTotal = costoBaseProducto + proteccionMonto + instalacionMonto;
 
-            let margenAplicar = parseFloat(item.margen) || 0;
+            // El porcentaje de margen viene en `pormargen` cuando el producto ya está guardado,
+            // y en `margen` cuando es un producto recién añadido (aún no guardado).
+            const margenPorcentaje = parseFloat(item.pormargen ?? item.margen) || 0;
+            let margenAplicar = margenPorcentaje;
             if (item.producto_tipo === 'Telas') {
                 margenAplicar = margenAplicar + parseFloat(porcentajeAumento);
             }
-            const precioConMargen = (costoTotal / (1 - (margenAplicar / 100)) - costoTotal);
+            margenAplicar = Math.min(margenAplicar, 99.9);
+            const descuentoPct = Math.min(parseFloat(descuento) || 0, 99.9);
+            const comAgPct = Math.min(parseFloat(comisionAgente) || 0, 99.9);
+            const comVePct = Math.min(parseFloat(comisionVendedor) || 0, 99.9);
+
+            const precioConMargen = (costoTotal / (Math.max(1 - (margenAplicar / 100), 0.001)) - costoTotal);
             const costomargen = precioConMargen + costoTotal
-            const comdescuento = (costomargen / (1 - (parseFloat(descuento) / 100 || 0)) - costomargen);
+            const comdescuento = (costomargen / (Math.max(1 - (descuentoPct / 100), 0.001)) - costomargen);
             const costomargendescuento = costomargen + comdescuento
-            const comisinAgente = (costomargendescuento / (1 - (parseFloat(comisionAgente) / 100 || 0)) - costomargendescuento);
+            const comisinAgente = (costomargendescuento / (Math.max(1 - (comAgPct / 100), 0.001)) - costomargendescuento);
             const costomargenvendedor = costomargen + comdescuento + comisinAgente;
-            const comisionvendedor = (costomargenvendedor / (1 - (parseFloat(comisionVendedor) / 100 || 0)) - costomargenvendedor);
+            const comisionvendedor = (costomargenvendedor / (Math.max(1 - (comVePct / 100), 0.001)) - costomargenvendedor);
 
             const subtotalLinea = parseFloat(costoBaseProducto) + parseFloat(proteccionMonto) + parseFloat(instalacionMonto) + parseFloat(precioConMargen) + parseFloat(comdescuento) + parseFloat(comisinAgente) + parseFloat(comisionvendedor);
 
@@ -116,6 +124,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
 
             return {
                 ...item,
+                margen: margenPorcentaje,
                 calculated: {
                     costoBase: costoBaseProducto,
                     proteccion: proteccionMonto,
@@ -140,9 +149,9 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
     const totals = useMemo(() => {
         const subtotalListPrice = products.reduce((acc, item) => acc + (item.calculated?.subtotal || 0), 0);
 
-        const descuentoPct = parseFloat(descuento) || 0;
+        const descuentoPct = Math.min(parseFloat(descuento) || 0, 99.9);
         const totalDescuentos = subtotalListPrice * (descuentoPct / 100);
-        const subtotalNeto = subtotalListPrice - totalDescuentos;
+        const subtotalNeto = Math.max(subtotalListPrice - totalDescuentos, 0);
 
         const totalProteccion = products.reduce((acc, item) => acc + (item.calculated?.proteccion || 0), 0);
         const totalInstalacion = products.reduce((acc, item) => acc + (item.calculated?.instalacion || 0), 0);
@@ -155,8 +164,8 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
         const esPrecioManualValido = precioFinalNum > 0 && (!isAdmin && precioFinalNum >= minPrecioPermitido || isAdmin);
 
         const baseParaCalculo = esPrecioManualValido ? precioFinalNum : subtotalNeto;
-        const montoIVA = baseParaCalculo * 0.16;
-        const totalFinal = incluyeIVA ? baseParaCalculo + montoIVA : baseParaCalculo;
+        const montoIVA = Math.max(baseParaCalculo * 0.16, 0);
+        const totalFinal = Math.max(incluyeIVA ? baseParaCalculo + montoIVA : baseParaCalculo, 0);
 
         return {
             subtotalListPrice,
@@ -296,7 +305,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                 const response = await fetch(`/api/cotizacion/${quoteId}/products`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ products: productsToSave, precioNormal, precioReal, iva, descuento, toleracion }),
+                    body: JSON.stringify({ products: productsToSave, precioNormal, precioReal, iva, descuento, toleracion, user }),
                 });
 
                 if (!response.ok) throw new Error('Error al guardar los productos');
@@ -319,7 +328,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
         }
     };
 
-    const canAddProducts = quoteStatus !== 'Finalizado' && quoteStatus !== 'Cancelado' && quoteAutorizado !== 1;
+    const canAddProducts = isAdmin ? (quoteStatus !== 'Cancelado') : (quoteStatus !== 'Finalizado' && quoteStatus !== 'Cancelado' && quoteAutorizado !== 1);
 
     return (
         <div className="space-y-4 font-sans">
@@ -562,6 +571,7 @@ export default function CotizacionProducts({ preciosInstalacion, quoteId, quoteS
                                             labelPlacement="outside-left"
                                             type="number"
                                             placeholder="0.00"
+                                            min="0"
                                             size="sm"
                                             variant="flat"
                                             value={precioFinalManual}

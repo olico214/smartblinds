@@ -1,24 +1,21 @@
 import { NextResponse } from "next/server";
 import pool from "@/libs/mysql-safe";
-import crypto from "crypto";
 
-// OBTENER los detalles completos de UNA cotización
 export async function GET(req, { params }) {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get("user");
 
-    // Es una buena práctica validar que los parámetros necesarios existen
     if (!userId) {
         return NextResponse.json(
             { ok: false, error: "El parámetro 'user' es requerido." },
-            { status: 400 } // 400 Bad Request
+            { status: 400 }
         );
     }
+
     try {
         const { id } = await params;
 
-        // Query para el encabezado
-        const headerQuery = `
+        const query = `
             SELECT 
                 ov.*,
                 c.nombre AS cliente_nombre,
@@ -46,15 +43,15 @@ export async function GET(req, { params }) {
             LEFT JOIN users_data AS u ON ov.idUser = u.id
             LEFT JOIN envio AS e ON ov.id_envio = e.id
             LEFT JOIN users_data AS uAgent ON ov.idAgente = uAgent.id
-            left join tipo_proyecto pt on pt.id = ov.idTipoproyecto
-            WHERE ov.id = ?;
+            LEFT JOIN tipo_proyecto pt ON pt.id = ov.idTipoproyecto
+            WHERE ov.id = ? AND ov.autorizado = 1
         `;
-        const [headerResult] = await pool.query(headerQuery, [id]);
-        if (headerResult.length === 0) {
-            return NextResponse.json({ message: "Cotización no encontrada" }, { status: 404 });
+        const [result] = await pool.query(query, [id]);
+
+        if (result.length === 0) {
+            return NextResponse.json({ message: "Venta no encontrada" }, { status: 404 });
         }
 
-        // Query para los productos
         const productQuery = `
             SELECT 
                 pov.*, 
@@ -63,68 +60,67 @@ export async function GET(req, { params }) {
                 p.costo as actual_costo,
                 p.precio as actual_precio,
                 p.sku
-
             FROM products_ov pov
             JOIN productos p ON pov.idProducto = p.id
-            WHERE pov.idCotizacion = ?;
+            WHERE pov.idCotizacion = ?
         `;
         const [productsResult] = await pool.query(productQuery, [id]);
 
         const isAdminQuery = `
-            SELECT externo from users where userID = ?;
+            SELECT externo from users where userID = ?
         `;
         const [isAdminResult] = await pool.query(isAdminQuery, [userId]);
 
+        // Historial de cambios (original vs modificado) para el área de compras.
+        let cambiosResult = [];
+        try {
+            const cambiosQuery = `
+                SELECT * FROM producto_cambios
+                WHERE idCotizacion = ?
+                ORDER BY id DESC
+            `;
+            const [cambios] = await pool.query(cambiosQuery, [id]);
+            cambiosResult = cambios;
+        } catch (e) {
+            // Tabla aún no creada (migración pendiente): no se devuelve historial.
+            cambiosResult = [];
+        }
+
         return NextResponse.json({
-            cotizacion: headerResult[0],
+            venta: result[0],
             productos: productsResult,
-            isAdmin: isAdminResult[0].externo ? true : false
+            cambios: cambiosResult,
+            isAdmin: isAdminResult.length > 0 ? (isAdminResult[0].externo ? true : false) : false
         });
 
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+
 export async function PUT(req, { params }) {
-
     try {
-
         const { id } = await params;
-
         const body = await req.json();
-        const { idCliente, idUser, idTipoproyecto, id_envio, estatus, idAgente, autorizado } = body;
+        const { idCliente, idUser, idTipoproyecto, id_envio, idAgente, estatus } = body;
 
-        // Determinar si es solo un cambio de estatus (Autorizar/Cancelar)
         const isOnlyStatusChange = Object.keys(body).length === 1 && body.estatus;
 
         if (estatus === "Cancelar") {
-            // Solo cambiar estatus a Cancelado
-            const query = `UPDATE listado_ov SET estatus = ? WHERE id = ?`;
+            const query = `UPDATE listado_ov SET estatus = ?, autorizado = 0 WHERE id = ?`;
             await pool.query(query, ["Cancelado", id]);
-        } else if (estatus === "Autorizar") {
-            // Cambiar estatus a Autorizado, autorizado = 1, y generar GUID + número de venta
-            const guid = crypto.randomUUID();
-            const query = `UPDATE listado_ov SET estatus = ?, autorizado = 1, guid = ?, numero_venta = ? WHERE id = ?`;
-            const numeroVenta = `VTA-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(id).padStart(5, "0")}`;
-            await pool.query(query, ["Autorizado", guid, numeroVenta, id]);
         } else if (isOnlyStatusChange) {
-            // Otro cambio de estatus (ej: "Finalizado" desde otro lugar)
             const query = `UPDATE listado_ov SET estatus = ? WHERE id = ?`;
             await pool.query(query, [estatus, id]);
         } else {
-            // Actualización completa del encabezado (editar campos)
             const query = `UPDATE listado_ov
-            SET idCliente = ?, idUser = ?, idTipoproyecto = ?, id_envio = ?, idAgente = ?
-     WHERE id = ? `;
+                SET idCliente = ?, idUser = ?, idTipoproyecto = ?, id_envio = ?, idAgente = ?
+                WHERE id = ?`;
             await pool.query(query, [idCliente, idUser, idTipoproyecto, id_envio, idAgente, id]);
         }
 
-        return NextResponse.json({ ok: true, message: "Cotización actualizada" });
-
+        return NextResponse.json({ ok: true, message: "Venta actualizada" });
     } catch (error) {
-
         return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-
     }
-
 }

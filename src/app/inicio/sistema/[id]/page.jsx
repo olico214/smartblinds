@@ -4,6 +4,7 @@ import CotizacionProductsView from "./components/productsview";
 import { redirect } from "next/navigation";
 import DrawerOptionsComponent from "./components/drawerOptions";
 import CotizacionProductsViewtest from "./components/testview";
+import CotizacionDetailActions from "./components/detailActions";
 
 // --- Componente Principal de la Página ---
 export default async function IdCotizacionViewPage({ params }) {
@@ -31,6 +32,7 @@ export default async function IdCotizacionViewPage({ params }) {
             {/* <CotizacionProductsView productos={data.productos} cotizacion={data.cotizacion} /> */}
             <CotizacionProductsViewtest productos={data.productos} cotizacion={data.cotizacion} />
             <DrawerOptionsComponent id={id} urlinterna={urlinterna} />
+            <CotizacionDetailActions id={id} user={userid.value} cotizacion={data.cotizacion} isAdmin={data.isAdmin} />
         </div>
     );
 }

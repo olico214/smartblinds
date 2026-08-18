@@ -69,7 +69,7 @@ export default function CotizacionHeader({ cotizacion, catalogs, onUpdate, isAdm
         onUpdate();
     };
 
-    const canModify = cotizacion.estatus !== 'Autorizado' && cotizacion.estatus !== 'Cancelado' && cotizacion.autorizado !== 1;
+    const canModify = isAdmin ? (cotizacion.estatus !== 'Cancelado') : (cotizacion.estatus !== 'Autorizado' && cotizacion.estatus !== 'Cancelado' && cotizacion.autorizado !== 1);
 
     const estatuses = cotizacion.estatus === 'Finalizado' ? ["Autorizar", "Cancelar"] : ["Cancelar"];
     const statusColorMap = {

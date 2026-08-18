@@ -6,47 +6,44 @@ import {
     Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
     Button, Chip, Tooltip, Input, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem
 } from "@nextui-org/react";
-import { Search, Eye, Filter, ArrowUpDown, Plus, FileText, LayoutDashboard } from "lucide-react";
+import { Search, Eye, Filter, ArrowUpDown, ShoppingCart, LayoutDashboard, DollarSign, Hash } from "lucide-react";
 
 const statusColorMap = {
-    Nuevo: { color: "primary", bg: "bg-blue-50 text-blue-700 border-blue-200" },
-    'En proceso': { color: "warning", bg: "bg-amber-50 text-amber-700 border-amber-200" },
     Autorizado: { color: "success", bg: "bg-green-50 text-green-700 border-green-200" },
     Cancelado: { color: "danger", bg: "bg-red-50 text-red-700 border-red-200" },
-    Finalizado: { color: "secondary", bg: "bg-purple-50 text-purple-700 border-purple-200" },
 };
 
-export default function CotizacionesTable({ initialData }) {
+const formatMoney = (val) => {
+    const v = Math.max(parseFloat(val) || 0, 0);
+    return `$${v.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+export default function VentasTable({ initialData }) {
     const [filterValue, setFilterValue] = useState("");
-    const [statusFilter, setStatusFilter] = useState("all");
     const [sortField, setSortField] = useState("id");
     const [sortDirection, setSortDirection] = useState("desc");
 
     const filteredData = useMemo(() => {
         let data = [...initialData];
 
-        // Filtro por búsqueda
         if (filterValue) {
             const search = filterValue.toLowerCase();
             data = data.filter(item =>
                 item.cliente_nombre?.toLowerCase().includes(search) ||
                 item.usuario_nombre?.toLowerCase().includes(search) ||
-                String(item.id).includes(search)
+                String(item.id).includes(search) ||
+                item.numero_venta?.toLowerCase().includes(search)
             );
         }
 
-        // Filtro por estatus
-        if (statusFilter !== "all") {
-            data = data.filter(item => item.estatus === statusFilter);
-        }
-
-        // Ordenamiento
         data.sort((a, b) => {
             let valA, valB;
             switch (sortField) {
                 case "id": valA = a.id; valB = b.id; break;
                 case "cliente": valA = a.cliente_nombre || ""; valB = b.cliente_nombre || ""; break;
                 case "fecha": valA = new Date(a.createdDate); valB = new Date(b.createdDate); break;
+                case "precioReal": valA = parseFloat(a.precioReal) || 0; valB = parseFloat(b.precioReal) || 0; break;
+                case "numero_venta": valA = a.numero_venta || ""; valB = b.numero_venta || ""; break;
                 default: valA = a.id; valB = b.id;
             }
             if (sortDirection === "asc") return valA > valB ? 1 : -1;
@@ -54,7 +51,7 @@ export default function CotizacionesTable({ initialData }) {
         });
 
         return data;
-    }, [initialData, filterValue, statusFilter, sortField, sortDirection]);
+    }, [initialData, filterValue, sortField, sortDirection]);
 
     const toggleSort = (field) => {
         if (sortField === field) {
@@ -70,16 +67,9 @@ export default function CotizacionesTable({ initialData }) {
         return new Date(dateString).toLocaleDateString('es-MX', options);
     };
 
-    const formatDateRelative = (dateString) => {
-        const now = new Date();
-        const date = new Date(dateString);
-        const diff = now - date;
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        if (days === 0) return 'Hoy';
-        if (days === 1) return 'Ayer';
-        if (days < 7) return `Hace ${days} días`;
-        return formatDate(dateString);
-    };
+    const totalVentas = useMemo(() => {
+        return initialData.reduce((acc, item) => acc + Math.max(parseFloat(item.precioReal) || 0, 0), 0);
+    }, [initialData]);
 
     return (
         <div className="p-4 sm:p-6 lg:p-8">
@@ -92,22 +82,47 @@ export default function CotizacionesTable({ initialData }) {
                         </Link>
                         <div>
                             <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                                <FileText size={24} className="text-blue-600" />
-                                Cotizaciones
+                                <ShoppingCart size={24} className="text-green-600" />
+                                Ventas
                             </h1>
                         </div>
                     </div>
                     <p className="text-sm text-slate-400 mt-0.5">
-                        {filteredData.length} de {initialData.length} registros
+                        {filteredData.length} de {initialData.length} ventas confirmadas
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Link
-                        href="/inicio/sistema/crear-cotizacion"
-                        className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all text-sm font-medium flex items-center gap-2 shadow-lg shadow-blue-200"
-                    >
-                        <Plus size={16} /> Nueva Cotización
-                    </Link>
+            </div>
+
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 rounded-lg bg-green-50 text-green-600">
+                            <ShoppingCart size={20} />
+                        </div>
+                        <span className="text-xs text-slate-400 uppercase font-semibold">Total Ventas</span>
+                    </div>
+                    <h3 className="text-2xl font-bold text-slate-800">{initialData.length}</h3>
+                </div>
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 rounded-lg bg-purple-50 text-purple-600">
+                            <DollarSign size={20} />
+                        </div>
+                        <span className="text-xs text-slate-400 uppercase font-semibold">Monto Total</span>
+                    </div>
+                    <h3 className="text-2xl font-bold text-slate-800">{formatMoney(totalVentas)}</h3>
+                </div>
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+                            <Hash size={20} />
+                        </div>
+                        <span className="text-xs text-slate-400 uppercase font-semibold">Ticket Promedio</span>
+                    </div>
+                    <h3 className="text-2xl font-bold text-slate-800">
+                        {initialData.length > 0 ? formatMoney(totalVentas / initialData.length) : "$0.00"}
+                    </h3>
                 </div>
             </div>
 
@@ -116,7 +131,7 @@ export default function CotizacionesTable({ initialData }) {
                 <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <Input
-                        placeholder="Buscar por cliente, vendedor o folio..."
+                        placeholder="Buscar por cliente, vendedor, folio o # venta..."
                         value={filterValue}
                         onChange={(e) => setFilterValue(e.target.value)}
                         className="w-full"
@@ -128,29 +143,6 @@ export default function CotizacionesTable({ initialData }) {
                         radius="lg"
                     />
                 </div>
-                <Dropdown>
-                    <DropdownTrigger>
-                        <Button
-                            variant="bordered"
-                            className="bg-white border-slate-200 rounded-xl shadow-sm min-w-[160px]"
-                            startContent={<Filter size={16} />}
-                        >
-                            {statusFilter === "all" ? "Todos los estatus" : statusFilter}
-                        </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu
-                        aria-label="Filtrar por estatus"
-                        onAction={(key) => setStatusFilter(key)}
-                        className="rounded-xl"
-                    >
-                        <DropdownItem key="all">Todos los estatus</DropdownItem>
-                        <DropdownItem key="Nuevo">Nuevo</DropdownItem>
-                        <DropdownItem key="En proceso">En proceso</DropdownItem>
-                        <DropdownItem key="Autorizado">Autorizado</DropdownItem>
-                        <DropdownItem key="Cancelado">Cancelado</DropdownItem>
-                        <DropdownItem key="Finalizado">Finalizado</DropdownItem>
-                    </DropdownMenu>
-                </Dropdown>
             </div>
 
             {/* Tabla */}
@@ -160,8 +152,13 @@ export default function CotizacionesTable({ initialData }) {
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-100">
                                 <th className="p-4 text-left">
+                                    <button onClick={() => toggleSort("numero_venta")} className="flex items-center gap-1 text-xs font-bold text-slate-400 uppercase tracking-wider hover:text-slate-600 transition-colors">
+                                        # Venta <ArrowUpDown size={12} />
+                                    </button>
+                                </th>
+                                <th className="p-4 text-left">
                                     <button onClick={() => toggleSort("id")} className="flex items-center gap-1 text-xs font-bold text-slate-400 uppercase tracking-wider hover:text-slate-600 transition-colors">
-                                        Folio <ArrowUpDown size={12} />
+                                        Folio Cotización <ArrowUpDown size={12} />
                                     </button>
                                 </th>
                                 <th className="p-4 text-left">
@@ -175,8 +172,11 @@ export default function CotizacionesTable({ initialData }) {
                                         Fecha <ArrowUpDown size={12} />
                                     </button>
                                 </th>
-                                <th className="p-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Estatus</th>
-                                <th className="p-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Autorizado</th>
+                                <th className="p-4 text-right">
+                                    <button onClick={() => toggleSort("precioReal")} className="flex items-center gap-1 text-xs font-bold text-slate-400 uppercase tracking-wider hover:text-slate-600 transition-colors ml-auto">
+                                        Monto <ArrowUpDown size={12} />
+                                    </button>
+                                </th>
                                 <th className="p-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
@@ -184,14 +184,21 @@ export default function CotizacionesTable({ initialData }) {
                             {filteredData.length === 0 ? (
                                 <tr>
                                     <td colSpan="7" className="p-12 text-center">
-                                        <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                                        <p className="text-slate-400 font-medium">No hay cotizaciones registradas</p>
-                                        <p className="text-xs text-slate-300 mt-1">Crea una nueva cotización para comenzar</p>
+                                        <ShoppingCart className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                                        <p className="text-slate-400 font-medium">No hay ventas confirmadas</p>
+                                        <p className="text-xs text-slate-300 mt-1">Las cotizaciones autorizadas aparecerán aquí</p>
                                     </td>
                                 </tr>
                             ) : (
                                 filteredData.map((item) => (
-                                    <tr key={item.id} className="hover:bg-blue-50/50 transition-colors group">
+                                    <tr key={item.id} className="hover:bg-green-50/50 transition-colors group">
+                                        <td className="p-4">
+                                            {item.numero_venta ? (
+                                                <span className="font-mono text-sm font-bold text-green-700">{item.numero_venta}</span>
+                                            ) : (
+                                                <span className="font-mono text-xs text-slate-400">Pendiente</span>
+                                            )}
+                                        </td>
                                         <td className="p-4">
                                             <span className="font-mono text-sm font-bold text-blue-600">#{item.id}</span>
                                         </td>
@@ -206,39 +213,25 @@ export default function CotizacionesTable({ initialData }) {
                                         </td>
                                         <td className="p-4">
                                             <div className="text-sm text-slate-600">{formatDate(item.createdDate)}</div>
-                                            <div className="text-xs text-slate-400">{formatDateRelative(item.createdDate)}</div>
-                                        </td>
-                                        <td className="p-4">
-                                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${statusColorMap[item.estatus]?.bg || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-                                                {item.estatus}
-                                            </span>
-                                        </td>
-                                        <td className="p-4">
-                                            {item.autorizado == 1 ? (
-                                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 px-2.5 py-1 rounded-full border border-green-200">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                                    Autorizado
-                                                </span>
-                                            ) : (
-                                                <span className="text-xs text-slate-400 bg-slate-50 px-2.5 py-1 rounded-full border border-slate-200">
-                                                    Pendiente
-                                                </span>
-                                            )}
                                         </td>
                                         <td className="p-4 text-right">
-                                            <Tooltip content={item.autorizado == 1 ? "Ver venta" : "Ver detalles y gestionar"} placement="left" color="primary">
-                                                <Button
-                                                    prefetch={false}
-                                                    as={Link}
-                                                    href={item.autorizado == 1 ? `/inicio/sistema/ventas/${item.id}` : `/inicio/sistema/${item.id}`}
-                                                    variant="light"
-                                                    size="sm"
-                                                    className={item.autorizado == 1 ? "text-green-600 hover:bg-green-50 rounded-lg min-w-0 px-3" : "text-blue-600 hover:bg-blue-50 rounded-lg min-w-0 px-3"}
-                                                    startContent={<Eye size={16} />}
-                                                >
-                                                    {item.autorizado == 1 ? "Ver Venta" : "Detalles"}
-                                                </Button>
-                                            </Tooltip>
+                                            <span className="font-bold text-slate-800">{formatMoney(item.precioReal)}</span>
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Tooltip content="Ver y editar venta" placement="left" color="primary">
+                                                    <Button
+                                                        as={Link}
+                                                        href={`/inicio/sistema/ventas/${item.id}`}
+                                                        variant="light"
+                                                        size="sm"
+                                                        className="text-green-600 hover:bg-green-50 rounded-lg min-w-0 px-3"
+                                                        startContent={<Eye size={16} />}
+                                                    >
+                                                        Detalles
+                                                    </Button>
+                                                </Tooltip>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -246,22 +239,13 @@ export default function CotizacionesTable({ initialData }) {
                         </tbody>
                     </table>
                 </div>
-                {/* Footer */}
                 <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
                     <span className="text-xs text-slate-400">
-                        Mostrando {filteredData.length} de {initialData.length} cotizaciones
+                        Mostrando {filteredData.length} de {initialData.length} ventas
                     </span>
-                    <div className="flex gap-1">
-                        {['Nuevo', 'En proceso', 'Autorizado', 'Cancelado', 'Finalizado'].map(s => {
-                            const count = initialData.filter(i => i.estatus === s).length;
-                            if (count === 0) return null;
-                            return (
-                                <span key={s} className={`text-[10px] px-2 py-0.5 rounded-full ${statusColorMap[s]?.bg || ''}`}>
-                                    {s}: {count}
-                                </span>
-                            );
-                        })}
-                    </div>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-50 text-green-700">
+                        Total: {formatMoney(totalVentas)}
+                    </span>
                 </div>
             </div>
         </div>

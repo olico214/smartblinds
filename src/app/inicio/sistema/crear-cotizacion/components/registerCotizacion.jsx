@@ -49,7 +49,7 @@ const lineas = [
     { key: "Cortinas Premium", value: "Cortinas Premium", color: "primary" }
 ];
 
-export default function CotizacionForm({ isOpen, onClose, user, preselectedClientId }) {
+export default function CotizacionForm({ isOpen, onClose, user, preselectedClientId, parentId, parentData }) {
     const router = useRouter();
     const [formData, setFormData] = useState(initialFormState);
     const [catalogs, setCatalogs] = useState({ clientes: [], usuarios: [], tiposProyecto: [], envios: [] });
@@ -68,10 +68,26 @@ export default function CotizacionForm({ isOpen, onClose, user, preselectedClien
         }
     }, [isOpen]);
 
+    useEffect(() => {
+        if (isOpen && parentData && catalogs.clientes.length > 0) {
+            setFormData({
+                idCliente: String(parentData.idCliente || ""),
+                idUser: String(parentData.idUser || ""),
+                idAgente: String(parentData.idAgente || ""),
+                idTipoproyecto: String(parentData.idTipoproyecto || ""),
+                id_envio: String(parentData.id_envio || ""),
+                nombreProyecto: (parentData.nombreProyecto || "") + " (vinculada)",
+                lineaCotizada: parentData.linea_cotizada || ""
+            });
+        } else if (isOpen && !parentData) {
+            setFormData(initialFormState);
+        }
+    }, [isOpen, parentData, catalogs.clientes.length]);
+
     // Pre-seleccionar cliente si se proporciona un ID
     useEffect(() => {
-        if (preselectedClientId && catalogs.clientes.length > 0) {
-            setFormData(prev => ({ ...prev, idCliente: preselectedClientId }));
+        if (!parentData && preselectedClientId && catalogs.clientes.length > 0) {
+            setFormData(prev => ({ ...prev, idCliente: String(preselectedClientId) }));
         }
     }, [preselectedClientId, catalogs.clientes]);
 
@@ -118,7 +134,7 @@ export default function CotizacionForm({ isOpen, onClose, user, preselectedClien
                             'Content-Type': 'application/json',
                             "Authorization": `Bearer ${user}`
                         },
-                        body: JSON.stringify(formData),
+                        body: JSON.stringify(parentId ? { ...formData, parent_id: parentId } : formData),
                     });
 
                     const data = await res.json();
@@ -173,8 +189,8 @@ export default function CotizacionForm({ isOpen, onClose, user, preselectedClien
                                         <IoIosCreate className="text-xl text-blue-600" />
                                     </div>
                                     <div>
-                                        <h2 className="text-xl font-bold text-gray-800">Nueva Cotización</h2>
-                                        <p className="text-sm text-gray-500">Complete todos los campos requeridos</p>
+                                        <h2 className="text-xl font-bold text-gray-800">{parentData ? "Cotización Vinculada" : "Nueva Cotización"}</h2>
+                                        <p className="text-sm text-gray-500">{parentData ? `Vinculada a cotización #${parentId}` : "Complete todos los campos requeridos"}</p>
                                     </div>
                                 </div>
                             </ModalHeader>
@@ -251,6 +267,7 @@ export default function CotizacionForm({ isOpen, onClose, user, preselectedClien
                                                             name="lineaCotizada"
                                                             placeholder="Seleccionar línea"
                                                             items={lineas}
+                                                            selectedKeys={formData.lineaCotizada ? [formData.lineaCotizada] : []}
                                                             onChange={handleSelectChange}
                                                             variant="bordered"
                                                             isRequired
@@ -276,6 +293,7 @@ export default function CotizacionForm({ isOpen, onClose, user, preselectedClien
                                                             name="idTipoproyecto"
                                                             placeholder="Seleccionar tipo"
                                                             items={catalogs.tiposProyecto}
+                                                            selectedKeys={formData.idTipoproyecto ? [String(formData.idTipoproyecto)] : []}
                                                             onChange={handleSelectChange}
                                                             variant="bordered"
                                                             isRequired
@@ -330,6 +348,7 @@ export default function CotizacionForm({ isOpen, onClose, user, preselectedClien
                                                             name="idUser"
                                                             placeholder="Seleccionar vendedor"
                                                             items={catalogs.usuarios}
+                                                            selectedKeys={formData.idUser ? [String(formData.idUser)] : []}
                                                             onChange={handleSelectChange}
                                                             variant="bordered"
                                                             classNames={{ value: "text-gray-800" }}
@@ -348,6 +367,7 @@ export default function CotizacionForm({ isOpen, onClose, user, preselectedClien
                                                             name="idAgente"
                                                             placeholder="Seleccionar agente"
                                                             items={catalogs.usuarios}
+                                                            selectedKeys={formData.idAgente ? [String(formData.idAgente)] : []}
                                                             onChange={handleSelectChange}
                                                             variant="bordered"
                                                             classNames={{ value: "text-gray-800" }}
@@ -377,6 +397,7 @@ export default function CotizacionForm({ isOpen, onClose, user, preselectedClien
                                                     name="id_envio"
                                                     placeholder="Seleccionar método de envío"
                                                     items={catalogs.envios}
+                                                    selectedKeys={formData.id_envio ? [String(formData.id_envio)] : []}
                                                     onChange={handleSelectChange}
                                                     variant="bordered"
                                                     classNames={{ value: "text-gray-800" }}
